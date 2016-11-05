@@ -18,12 +18,14 @@ class TTrie{
 public:
 	char c;
 	int count;
+	TTrie *parent;
 	TTrie *child[26]; 
 	
 	
 	TTrie(void){
 		c = '_';
 		count = 0;
+		parent = NULL;
 		for(int i = 0; i < 26; i++){
 			child[i] = NULL;
 		}
@@ -32,6 +34,16 @@ public:
 	TTrie(char ch){
 		c = ch;
 		count = 0;
+		parent = NULL;
+		for(int i = 0; i < 26; i++){
+			child[i] = NULL;
+		}
+	};
+	
+	TTrie(char ch, TTrie *p){
+		c = ch;
+		count = 0;
+		parent = p;
 		for(int i = 0; i < 26; i++){
 			child[i] = NULL;
 		}
@@ -102,7 +114,7 @@ public:
 		}
 	}
 private:
-	void _IncludeRecursive(int pos, string str, int countNum, bool genTypos){
+	bool _IncludeRecursive(int pos, string str, int countNum, bool genTypos){
 		if(pos == str.size() - 1){
 			if(count){
 				if(genTypos){
@@ -125,6 +137,8 @@ private:
 			}
 		}
 	};
+	
+	
 
 	TTrie* _CreateBranch(int pos, string str, int countNum){
 		TTrie *root = new TTrie(str[pos]);
