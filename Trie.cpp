@@ -2,7 +2,6 @@
 #include <fstream>
 #include <string>
 #include <list>
-#include <vector>
 
 #define ALPHABET 26 // |Alphabet|
 #define MAXINT 2147483647
@@ -12,10 +11,12 @@
 
 using namespace std;
 
+
 typedef struct {
 	string word;
 	int count;
 } TWordNCount;
+
 
 int strLen(const char *str){
 	int len = -1;
@@ -65,14 +66,14 @@ public:
 	int count;
 	int typoDepth;
 	TTrie *parent;
-	TTrie *child[26]; 
+	TTrie *child[ALPHABET]; 
 	
 	
 	TTrie(void){
 		c = '_';
 		count = 0;
 		parent = NULL;
-		for(int i = 0; i < 26; i++){
+		for(int i = 0; i < ALPHABET; i++){
 			child[i] = NULL;
 		}
 	};
@@ -82,7 +83,7 @@ public:
 		c = ch;
 		count = 0;
 		parent = NULL;
-		for(int i = 0; i < 26; i++){
+		for(int i = 0; i < ALPHABET; i++){
 			child[i] = NULL;
 		}
 	};
@@ -92,7 +93,7 @@ public:
 		c = ch;
 		count = 0;
 		parent = p;
-		for(int i = 0; i < 26; i++){
+		for(int i = 0; i < ALPHABET; i++){
 			child[i] = NULL;
 		}
 	};
@@ -189,7 +190,7 @@ public:
 		}
 		stream << "\n";
 		
-		for(int i = 0; i < 26; i++){
+		for(int i = 0; i < ALPHABET; i++){
 			if(child[i]){
 				child[i]->xPrint(stream, lvl + 1);
 			}
@@ -207,7 +208,7 @@ public:
 		}
 		cout << "\n";
 		
-		for(int i = 0; i < 26; i++){
+		for(int i = 0; i < ALPHABET; i++){
 			if(child[i]){
 				child[i]->Print(lvl + 1);
 			}
@@ -325,6 +326,7 @@ private:
 	};
 };
 
+
 int _CharId(char c){
 	if((65 <= c) and (c < 91)){
 		c -= 65;
@@ -360,7 +362,7 @@ int GetInt(char *str){
 void _TopExistsRecursive(TTrie *rootTypos, int depth, char *str, list<TWordNCount> *res, TTrie *db){
 	str[depth] = rootTypos->c;
 	
-	for(int i = 0; i < 26; i++){
+	for(int i = 0; i < ALPHABET; i++){
 		if(rootTypos->child[i]){
 			_TopExistsRecursive(rootTypos->child[i], depth + 1, str, res, db);
 		}
@@ -391,7 +393,7 @@ list<TWordNCount> GetTopExistances(TTrie *sample, TTrie *db){
 	res.push_back(dummy);
 	
 	if(sample->c == '_'){
-		for(int i = 0; i < 26; i++){
+		for(int i = 0; i < ALPHABET; i++){
 			if(!sample->child[i]){
 				continue;
 			}
@@ -448,6 +450,7 @@ char* strCpyCreate(const char *origin, int start = 0, int len = 0){
 	}
 	return res;
 }
+
 
 // UnSafe function: dont check str "dest" to memory corruptions!
 char* strCpyBackFrom(char *origin, char *dest, int start = 0, int len = 0){
@@ -632,7 +635,7 @@ TTrie* _TraverseRec(TTrie *root, char *pattern, int lvl, int pos){
 	TTrie *resNode;
 	
 	pattern[pos] = root->c;
-	for(int i = 0; i < 26; i++){
+	for(int i = 0; i < ALPHABET; i++){
 		if(!root->child[i]){
 			continue;
 		}
@@ -665,7 +668,7 @@ TTrie* Traverse(TTrie *startNode, char *pattern, int lvl){
 			startNode = startNode->parent;
 			newChId = _CharId(prevCh) + 1;
 			pos--;
-			while(newChId < 26){
+			while(newChId < ALPHABET){
 				if(startNode->child[newChId]){
 					resNode = _TraverseRec(startNode->child[newChId], pattern, lvl, pos);
 					if(resNode){
@@ -676,7 +679,7 @@ TTrie* Traverse(TTrie *startNode, char *pattern, int lvl){
 			}
 		}while(startNode->c != '_');
 	}else{
-		for(int i = 0; i < 26; i++){
+		for(int i = 0; i < ALPHABET; i++){
 			resNode = _TraverseRec(startNode->child[i], pattern, lvl, 0);
 			if(resNode){
 				break;
