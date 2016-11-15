@@ -6,6 +6,9 @@
 
 #define ALPHABET 26 // |Alphabet|
 #define MAXINT 2147483647
+#define MAXPATLEN 100
+#define TYPOSDEPTH 10  // typos generation depth
+#define TOPSIZE 20
 
 using namespace std;
 
@@ -14,10 +17,53 @@ typedef struct {
 	int count;
 } TWordNCount;
 
+int strLen(const char *str){
+	int len = -1;
+	while(str[++len]);
+	return len;
+}
+
+
+int abs(int x){
+	if(x < 0){
+		x *= -1;
+	}
+	return x;
+}
+
+
+bool ProbMoreThan(string candidate, int changeType, int popularity, TWordNCount pairExists){
+	if(abs(pairExists.count) < ((changeType == 1)? 2 : 1) * popularity){
+		return true;
+	}
+	return false;
+}
+
+
+void CheckTopOf(list<TWordNCount> *List, string newbie, int changeType, int popularity){
+	list<TWordNCount>::iterator str1 = List->begin();
+	
+	for(; str1 != List->end(); str1++){
+		if(ProbMoreThan(newbie, changeType, popularity, *str1)){
+			TWordNCount pair;
+			
+			pair.word = newbie;
+			pair.count = ((changeType == 1)? -2 : 1) * popularity;
+			List->insert(str1, pair);
+			break;
+		}
+	}
+	if(List->size() > TOPSIZE){
+		List->pop_back();
+	}
+}
+
+
 class TTrie{
 public:
 	char c;
 	int count;
+	int typoDepth;
 	TTrie *parent;
 	TTrie *child[26]; 
 	
@@ -31,6 +77,7 @@ public:
 		}
 	};
 	
+	
 	TTrie(char ch){
 		c = ch;
 		count = 0;
@@ -39,6 +86,7 @@ public:
 			child[i] = NULL;
 		}
 	};
+	
 	
 	TTrie(char ch, TTrie *p){
 		c = ch;
@@ -49,13 +97,45 @@ public:
 		}
 	};
 	
-	void Include(string str, int countNum = 0){
+	
+	void Include(string str, int countNum = 0, int genTypos = 0){
 		if(child[_CharId(str[0])]){
-			child[_CharId(str[0])]->_IncludeRecursive(0, str, countNum);
+			child[_CharId(str[0])]->_IncludeRecursive(0, str, countNum, genTypos);
 		}else{
-			child[_CharId(str[0])] = _CreateBranch(0, str, countNum);
+			child[_CharId(str[0])] = _CreateBranch(0, str, countNum, genTypos);
 		}
 	};
+
+
+	void Include(char *str, int countNum = 0, int genTypos = 0){
+		if(child[_CharId(str[0])]){
+			child[_CharId(str[0])]->_IncludeRecursive(0, str, countNum, genTypos);
+		}else{
+			child[_CharId(str[0])] = _CreateBranch(0, str, countNum, genTypos);
+		}
+	};
+
+	
+	int Search(char *str){
+		int i, answer = 0, size = strLen(str);
+		TTrie *node = this;
+		
+		for(i = 0; i < size - 1; i++){
+			node = node->child[_CharId(str[i])];
+			if(node == NULL){
+				break;
+			}
+		}
+		if(node != NULL && node->child[_CharId(str[i])] != NULL){
+			node = node->child[_CharId(str[i])];
+			
+			if((i == size - 1) and node->count){
+				answer = node->count;
+			}
+		}
+		return answer;
+	};
+	
 	
 	int Search(string str){
 		int i, answer = 0;
@@ -77,6 +157,7 @@ public:
 		return answer;
 	};
 	
+	
 	TTrie* SearchTypos(string str){
 		int i;
 		TTrie *node = this;
@@ -97,13 +178,32 @@ public:
 		return node;
 	};
 	
+	
+	void xPrint(ofstream& stream, int lvl = 0){
+		for(int j = 0; j < lvl; j++){
+			stream << "_";
+		}
+		stream << c;
+		if(count){
+			stream << " + " << count;
+		}
+		stream << "\n";
+		
+		for(int i = 0; i < 26; i++){
+			if(child[i]){
+				child[i]->xPrint(stream, lvl + 1);
+			}
+		}
+	}
+
+	
 	void Print(int lvl = 0){
 		for(int j = 0; j < lvl; j++){
-			cout << "__";
+			cout << "_";
 		}
 		cout << c;
 		if(count){
-			cout << " " << count;
+			cout << " - " << count;
 		}
 		cout << "\n";
 		
@@ -113,48 +213,7 @@ public:
 			}
 		}
 	}
-private:
-	bool _IncludeRecursive(int pos, string str, int countNum, bool genTypos){
-		if(pos == str.size() - 1){
-			if(count){
-				if(genTypos){
-					count = countNum + count * 10;
-				}else{
-					cerr << "DUPLICATE: " << str << " " << str[pos] << " " << pos << "\n";
-				}
-			}else{
-				if(countNum != 0){
-					count = countNum; // dirty trick... be careful
-				}else{
-					count = -1;
-				}
-			}
-		}else{
-			if(child[_CharId(str[pos + 1])]){
-				child[_CharId(str[pos + 1])]->_IncludeRecursive(pos + 1, str, countNum);
-			}else{
-				child[_CharId(str[pos + 1])] = _CreateBranch(pos + 1, str, countNum);
-			}
-		}
-	};
 	
-	
-
-	TTrie* _CreateBranch(int pos, string str, int countNum){
-		TTrie *root = new TTrie(str[pos]);
-		
-		if(pos == str.size() - 1){
-			if(countNum != 0){
-				root->count = countNum; // dirty trick... be careful
-			}else{
-				root->count = -1;
-			}
-		}else{
-			root->child[_CharId(str[pos + 1])] = _CreateBranch(pos + 1, str, countNum);
-		}
-		
-		return root;
-	};
 	
 	int _CharId(char c){
 		if((65 <= c) and (c < 91)){
@@ -169,6 +228,95 @@ private:
 		return c;
 	};
 	
+private:
+
+	bool _IncludeRecursive(int pos, char *str, int countNum, int genTypos){
+		if(pos == strLen(str) - 1){
+			if(count){
+				if(!genTypos){
+					cerr << "DUPLICATE: " << str << " " << str[pos] << " " << pos << "\n";
+				}
+			}else{
+				typoDepth = genTypos;
+				if(countNum != 0){
+					count = countNum; // dirty trick... be careful
+				}else{
+					count = -1;
+				}
+			}
+		}else{
+			if(child[_CharId(str[pos + 1])]){
+				child[_CharId(str[pos + 1])]->_IncludeRecursive(pos + 1, str, countNum, genTypos);
+			}else{
+				child[_CharId(str[pos + 1])] = _CreateBranch(pos + 1, str, countNum, genTypos);
+			}
+		}
+	};
+
+	
+	TTrie* _CreateBranch(int pos, char* str, int countNum, int genTypos){
+		TTrie *root = new TTrie(str[pos], this);
+		
+		if(pos == strLen(str) - 1){
+			root->typoDepth = genTypos;
+			root->parent = this;
+			if(countNum != 0){
+				root->count = countNum; // dirty trick... be careful
+			}else{
+				root->count = -1;
+			}
+		}else{
+			root->count = 0;
+			root->child[_CharId(str[pos + 1])] = root->_CreateBranch(pos + 1, str, countNum, genTypos);
+		}
+		
+		return root;
+	};
+	
+
+	bool _IncludeRecursive(int pos, string str, int countNum, int genTypos){
+		if(pos == str.size() - 1){
+			if(count){
+				if(!genTypos){
+					cerr << "DUPLICATE: " << str << " " << str[pos] << " " << pos << "\n";
+				}
+			}else{
+				typoDepth = genTypos;
+				if(countNum != 0){
+					count = countNum; // dirty trick... be careful
+				}else{
+					count = -1;
+				}
+			}
+		}else{
+			if(child[_CharId(str[pos + 1])]){
+				child[_CharId(str[pos + 1])]->_IncludeRecursive(pos + 1, str, countNum, genTypos);
+			}else{
+				child[_CharId(str[pos + 1])] = _CreateBranch(pos + 1, str, countNum, genTypos);
+			}
+		}
+	};
+
+	
+	TTrie* _CreateBranch(int pos, string str, int countNum, int genTypos){
+		TTrie *root = new TTrie(str[pos], this);
+		
+		if(pos == str.size() - 1){
+			root->typoDepth = genTypos;
+			if(countNum != 0){
+				root->count = countNum; // dirty trick... be careful
+			}else{
+				root->count = -1;
+			}
+		}else{
+			root->count = 0;
+			root->child[_CharId(str[pos + 1])] = root->_CreateBranch(pos + 1, str, countNum, genTypos);
+		}
+		
+		return root;
+	};
+	
+	
 	char _ToLow(char c){
 		if((65 <= c) and (c <= 90)){
 			c += 22;
@@ -177,6 +325,20 @@ private:
 	};
 };
 
+int _CharId(char c){
+	if((65 <= c) and (c < 91)){
+		c -= 65;
+	}else
+	if((97 <= c) and (c < 123)){
+		c -= 97;
+	}
+	else{
+		cerr << "WRONG CHAR! : " << (int)c << " " << c << "\n";
+	}
+	return c;
+};
+
+
 int GetInt(string str){
 	int i = -1, x = 0;
 	while(str[++i]){
@@ -184,6 +346,7 @@ int GetInt(string str){
 	}
 	return x;
 }
+
 
 int GetInt(char *str){
 	int i = -1, x = 0;
@@ -194,438 +357,377 @@ int GetInt(char *str){
 }
 
 
-list<string> _SimilarRecursive(string pattern){
-	string str;
-	list<string> similarList;
-	int i, n = pattern.size();
+void _TopExistsRecursive(TTrie *rootTypos, int depth, char *str, list<TWordNCount> *res, TTrie *db){
+	str[depth] = rootTypos->c;
 	
-	// Transpositions
-	if(n > 1){
-		char c;
-		
-		for(i = 0; i < str.size() - 1; i++){
-			str = string(pattern);
-			c = str[i+1];
-			str[i+1] = str[i];
-			str[i] = c;
-			
-			similarList.push_back(str);
-			//similarTrie.Include(str);
+	for(int i = 0; i < 26; i++){
+		if(rootTypos->child[i]){
+			_TopExistsRecursive(rootTypos->child[i], depth + 1, str, res, db);
 		}
 	}
 	
-	int p = 0;
-	list<string>::iterator it;
-	
-	similarList.push_back(string("$"));
-	// Deletions
-	{
-		str = string(pattern,0,n - 1);
-		similarList.push_back(str);
-		//similarTrie.Include(str);
+	if(rootTypos->count){
+		str[depth + 1] = 0;
+		int popularity = db->Search(str);
 		
-		for(i = 1; i < n - 1; i++){
-			str = string(pattern,0,i);
-			str += string(pattern,i+1,n - str.size() - 1);
-			
-			similarList.push_back(str);
-			//similarTrie.Include(str);
+		if(popularity > 0){
+			CheckTopOf(res, str, rootTypos->count, popularity);
 		}
-		
-		str = string(pattern,1);
-		similarList.push_back(str);
-		//similarTrie.Include(str);
+		rootTypos->count = 0;
 	}
-	
-	similarList.push_back(string("$"));
-	// Substitutions
-	{
-		string part2(pattern,1);
-		for(i = 0; i < ALPHABET; i++){
-			str = (char)(97 + i) + part2;
-			similarList.push_back(str);
-		}
-		
-		string part1;
-		for(int j = 1; j < n - 1; j++){ // first and last positions processed separately
-			part1 = string(pattern, 0, j);
-			part2 = string(pattern, j + 1, n - j);
-			for(i = 0; i < ALPHABET; i++){
-				str = part1 + (char)(i + 97) + part2;
-				similarList.push_back(str);
-			}
-		}
-		
-		part1 = string(pattern, 0, n - 1);
-		for(i = 0; i < ALPHABET; i++){
-			str = part1 + (char)(97 + i);
-			similarList.push_back(str);
-		}
-	}
-	
-	similarList.push_back(string("$"));
-	// Insertions
-	{
-		string part2(pattern);
-		for(i = 0; i < ALPHABET; i++){
-			str = (char)(97 + i) + part2;
-			similarList.push_back(str);
-		}
-		
-		string part1;
-		for(int j = 1; j < n; j++){ // first and last positions processed separately
-			part1 = string(pattern, 0, j);
-			part2 = string(pattern, j, n - j);
-			for(i = 0; i < ALPHABET; i++){
-				str = part1 + (char)(i + 97) + part2;
-				similarList.push_back(str);
-			}
-		}
-		
-		part1 = string(pattern);
-		for(i = 0; i < ALPHABET; i++){
-			str = part1 + (char)(97 + i);
-			similarList.push_back(str);
-		}
-	}
-	
-	
-	
-	return similarList;
 }
 
-list<string> _ComplexConcat(list<string> List1, list<string> List2){
-	list<string>::iterator str1 = List1.begin();
-	list<string>::iterator str2 = List2.begin();
-	list<string> List;
 	
-	for(int j = 0; j < 4; j++){
-		for(; *str1 != "$" && str1 != List1.end(); str1++){
-			List.push_back(*str1);
+list<TWordNCount> GetTopExistances(TTrie *sample, TTrie *db){
+	list<TWordNCount> res;
+	char str[MAXPATLEN];
+	int depth = 0;
+	
+	str[MAXPATLEN] = 0;
+	
+	TWordNCount dummy;
+	dummy.word = string(1, ' ');
+	dummy.count = 0;
+	res.push_back(dummy);
+	
+	if(sample->c == '_'){
+		for(int i = 0; i < 26; i++){
+			if(!sample->child[i]){
+				continue;
+			}
+			_TopExistsRecursive(sample->child[i], depth, str, &res, db);
 		}
-		for(; *str2 != "$" && str2 != List2.end(); str2++){
-			List.push_back(*str2);
-		}
-		if(str1 != List1.end() && str2 != List2.end()){
-			List.push_back(string("$"));
-		}
-		str1++;
-		str2++;
+	}else{
+		_TopExistsRecursive(sample, depth, str, &res, db);
 	}
-	List.unique();
-	return List;
+	
+	return res;
 }
+
+
+// UnSafe function: dont check str "dest" to memory corruptions!
+char* strCpyFrom(char *origin, char *dest, int start = 0, int len = 0){
+	if(len == 0){
+		origin += start;
+		while(*origin){
+			dest[len] = *origin;
+			len++;
+			origin++;
+		}
+		dest[len] = 0;
+	}else{
+		dest[len] = 0;
+		len--;
+		while(len >= start){
+			dest[len] = origin[len];
+			len--;
+		}
+	}
+	return dest;
+}
+
+	
+char* strCpyCreate(const char *origin, int start = 0, int len = 0){
+	int plen = strLen(origin);
+	char *res;
+	if(len == 0){
+		res = new char[plen - start + 1];
+	}else{
+		if(plen - len < 0){
+			cerr << "Error in strCpy: plen - clen < 0: " << 
+				plen << ' ' << len << ' ' << origin << '\n';
+			return NULL;
+		}
+		res = new char[len + 1];
+		plen = start + len - 1;
+		res[len] = 0;
+	}
+	while(plen >= start){
+		res[plen - start] = origin[plen];
+		plen--;
+	}
+	return res;
+}
+
+// UnSafe function: dont check str "dest" to memory corruptions!
+char* strCpyBackFrom(char *origin, char *dest, int start = 0, int len = 0){
+	if(len == 0){
+		len = strLen(dest);
+		origin += start;
+		while(*origin){
+			dest[len] = *origin;
+			len++;
+			origin++;
+		}
+		dest[len] = 0;
+	}else{
+		int olen = start + len - 1;
+		len += strLen(dest);
+		dest[len] = 0;
+		len--;
+		while(olen >= start){
+			dest[len] = origin[olen];
+			len--;
+			olen--;
+		}
+	}
+	return dest;
+}
+
 
 // IF WORD be length 1 its so bad.
-TTrie* __SimilarRecursive(string pattern, TTrie *db){
-	string str;
-	string spStr[(pattern.size() - 1) * 2] // splitted string without delimiter char: Cnk*2 - 2 = N!/(N-K)!*K!
-	//list<string> similarList;
-	int i, n = pattern.size(), pos;
+TTrie* __SimilarGenerate(char *pattern, int typosLvl, TTrie *db){
+	int i, pos, k, plen = strLen(pattern);
+	char *str = new char[plen + 2];
+	char *spStr[(plen - 1) * 2]; // splitted string without delimiter char: Cnk*2 - 2 = N!/(N-K)!*K!
+
 	
 	// Transpositions
 	{
 		char c;
 		
-		for(i = 0; i < str.size() - 1; i++){
-			str = string(pattern);
+		str = strCpyFrom(pattern, str);
+		for(i = 0; i < plen - 1; i++){
 			c = str[i+1];
 			str[i+1] = str[i];
 			str[i] = c;
 			
-			//similarList.push_back(str);
-			db.Include(str,4);
-		}
-	}
-	//similarList.push_back(string("$"));
-	// Deletions
-	{
-		str = string(pattern,0,n - 1);
-		//similarList.push_back(str);
-		db.Include(str, 2);
-		pos = -1;
-		spStr[++pos] = str;
-		
-		for(i = 1; i < n - 1; i++){
-			str = string(pattern,0,i);
-			spStr[++pos] = str;
-			spStr[++pos] = string(pattern,i+1,n - str.size() - 1);
-			str += spStr[pos];
+			db->Include(str, 1, typosLvl);
 			
-			//similarList.push_back(str);
-			bd.Include(str,2);
+			c = str[i+1];
+			str[i+1] = str[i];
+			str[i] = c;
 		}
-		
-		str = string(pattern,1);
-		spStr[++pos] = str;
-		//similarList.push_back(str);
-		bd.Include(str,2);
 	}
 	
-	//similarList.push_back(string("$"));
-	// Substitutions
+	// Deletions
 	{
-		//string part2(pattern,1);
-		//string part2 = spStr[pos];
-		for(i = 0; i < ALPHABET; i++){
-			str = (char)(97 + i) + spStr[0];//part2;
-			db.Include(str,3);
-			//similarList.push_back(str);
+		pos = -1;
+		spStr[++pos] = strCpyCreate(pattern, 1);
+		db->Include(spStr[pos], 2, typosLvl);
+		
+		for(i = 1; i < plen - 1; i++){
+			spStr[++pos] = strCpyCreate(pattern, 0, i);
+			spStr[++pos] = strCpyCreate(pattern, i + 1, plen - strLen(spStr[pos - 1]) - 1);
+			
+			str = strCpyFrom(spStr[pos - 1], str);
+			str = strCpyBackFrom(spStr[pos], str);
+			
+			db->Include(str, 2, typosLvl);
 		}
 		
-		//string part1;
+		spStr[++pos] = strCpyCreate(pattern, 0, plen - 1);
+		db->Include(spStr[pos], 2, typosLvl);
+	}
+	
+	// Substitutions
+	{		
+		str[0] = 'a';
+		str[1] = 0;
+		str = strCpyBackFrom(spStr[0], str);
+		db->Include(str, 3, typosLvl);
+		for(i = 1; i < ALPHABET; i++){
+			str[0] = (char)(97 + i);
+			db->Include(str, 3, typosLvl);
+		}
+
 		pos = 1;
-		for(int j = 1; j < n - 1; j++){ // first and last positions processed separately
-			//part1 = string(pattern, 0, j);
-			//part2 = string(pattern, j + 1, n - j ); // ещё -1 должно быть...
-			for(i = 0; i < ALPHABET; i++){
-				//str = part1 + (char)(i + 97) + part2;
-				str = spStr[pos] + (char)(i + 97) + spStr[pos + 1];
-				db.Include(str, 3);
-				//similarList.push_back(str);
+		for(int j = 1; j < plen - 1; j++){ // first and last positions processed separately
+			k = strLen(spStr[pos]);
+			str = strCpyFrom(spStr[pos], str);
+			str[k] = 'a';
+			str[k + 1] = 0;
+			str = strCpyBackFrom(spStr[pos + 1], str);
+			db->Include(str, 3, typosLvl);
+			for(i = 1; i < ALPHABET; i++){
+				str[k] = (char)(i + 97);
+				db->Include(str, 3, typosLvl);
 			}
 			pos += 2;
 		}
-		
-		
-		cout << pos << '\n';
 		// pos должен быть равен 2n - 1
-		//part1 = string(pattern, 0, n - 1);
+		
+		str = strCpyFrom(spStr[pos], str);
+		k = strLen(spStr[pos]);
+		str[k + 1] = 0;
 		for(i = 0; i < ALPHABET; i++){
-			//str = part1 + (char)(97 + i);
-			str = spStr[pos] + (char)(97 + i);
-			db.Include(str,3);
-			//similarList.push_back(str);
+			str[k] = (char)(97 + i);
+			db->Include(str, 3, typosLvl);
 		}
 	}
 	
-	//similarList.push_back(string("$"));
 	// Insertions
 	{
-		//string part2(pattern);
-		for(i = 0; i < ALPHABET; i++){
-			str = (char)(97 + i) + pattern;//part2;
-			db.Include(str, 4);
-			//similarList.push_back(str);
+		str[0] = 'a';
+		str[1] = 0;
+		str = strCpyBackFrom(pattern, str);
+		db->Include(str, 4, typosLvl);
+		for(i = 1; i < ALPHABET; i++){
+			str[0] = (char)(97 + i);
+			db->Include(str, 4, typosLvl);
 		}
 		
-		//string part1;
-		pos = 1;
-		for(int j = 1; j < n - 1; j++){ // first and last positions processed separately
-			//part1 = string(pattern, 0, j);
-			//part2 = string(pattern, j, n - j);
-			for(i = 0; i < ALPHABET; i++){
-				//str = part1 + (char)(i + 97) + part2;
-				str = spStr[pos]+ (char)(i + 97) + pattern[j] + spStr[pos + 1];
-				pos += 2;
-				db.Include(str,4);
-				//similarList.push_back(str);
+		if(plen > 1){
+			str[0] = pattern[0];
+			str[1] = 'a';
+			str[2] = 0;
+			str = strCpyBackFrom(spStr[0], str);
+			db->Include(str, 4, typosLvl);
+			for(i = 1; i < ALPHABET; i++){
+				str[1] = (char)(97 + i);
+				db->Include(str, 4, typosLvl);
+			}
+			
+			
+			if(plen > 2){
+				pos = 1;
+				for(int j = 1; j < plen - 1; j++){ // first and last positions processed separately
+					k = strLen(spStr[pos]);
+					str = strCpyFrom(spStr[pos],str);
+					str[k] = 'a';
+					str[k + 1] = pattern[j];
+					str[k + 2] = 0;
+					str = strCpyBackFrom(spStr[pos + 1], str);
+					db->Include(str, 4, typosLvl);
+					for(i = 1; i < ALPHABET; i++){
+						str[k] = (char)(i + 97);
+						db->Include(str, 4, typosLvl);
+					}
+					pos += 2;
+				}
+				
+				k = strLen(spStr[pos]);
+				str = strCpyFrom(spStr[pos], str);
+				str[k] = 'a';
+				str[k + 1] = 0;
+				str = strCpyBackFrom(spStr[pos - 1], str);
+				db->Include(str, 4, typosLvl);
+				for(i = 1; i < ALPHABET; i++){
+					str[k] = (char)(97 + i);
+					db->Include(str, 4, typosLvl);
+				}
 			}
 		}
-		pos += 2;
+		
+		str = strCpyFrom(pattern, str);
+		str[plen + 1] = 0;
 		for(i = 0; i < ALPHABET; i++){
-			str = spStr[pos] + (char)(97 + i) + spStr[pos - 1];
-			db.Include(str, 4);
+			str[plen] = (char)(97 + i);
+			db->Include(str, 4, typosLvl);
 		}
 		
-		//part1 = string(pattern);
-		for(i = 0; i < ALPHABET; i++){
-			str = pattern + (char)(97 + i);
-			db.Include(str, 4);
-			//similarList.push_back(str);
-		}
 	}
 	
+	// free all busy memory
+
+	delete[] str;
+	for(i = 0; i < plen * 2 - 2; i++){
+		delete[] spStr[i];
+	}
 	return db;
 }
 
-// нужно модифицировать так - отслеживать из какой секции текущий *str и 
-// и оставлять тот экземпляр, чья вероятность выше.
-list<string> _UnicueList(list<string> List){
-	list<string> ClearList;
-	list<string>::iterator str, newS;
+
+TTrie* _TraverseRec(TTrie *root, char *pattern, int lvl, int pos){
+	TTrie *resNode;
 	
-	for(str = List.begin(); str != List.end(); str++){
-		if(*str == "$"){
-			ClearList.push_back(*str); // becouse now: *str = string("$")
+	pattern[pos] = root->c;
+	for(int i = 0; i < 26; i++){
+		if(!root->child[i]){
 			continue;
 		}
-		// check for uniquennes:
-		for(newS = ClearList.begin(); newS != ClearList.end(); newS++){
-			if(*newS == *str){
+		resNode = _TraverseRec(root->child[i], pattern, lvl, pos + 1);
+		if(resNode){
+			return resNode;
+		}
+	}
+	if(root->count > 0 && root->typoDepth == lvl){
+		pattern[pos + 1] = 0;
+		resNode = root;
+	}else{
+		resNode = NULL;
+	}
+	
+	return resNode;
+}
+
+
+TTrie* Traverse(TTrie *startNode, char *pattern, int lvl){
+	int newChId;
+	TTrie *resNode;
+	
+	lvl--;
+	if(startNode->c != '_'){
+		int pos = strLen(pattern);
+		char prevCh;
+		do{
+			prevCh = startNode->c;
+			startNode = startNode->parent;
+			newChId = _CharId(prevCh) + 1;
+			pos--;
+			while(newChId < 26){
+				if(startNode->child[newChId]){
+					resNode = _TraverseRec(startNode->child[newChId], pattern, lvl, pos);
+					if(resNode){
+						return resNode;
+					}
+				}
+				newChId++;
+			}
+		}while(startNode->c != '_');
+	}else{
+		for(int i = 0; i < 26; i++){
+			resNode = _TraverseRec(startNode->child[i], pattern, lvl, 0);
+			if(resNode){
 				break;
 			}
 		}
-		if(newS == ClearList.end()){
-			ClearList.push_back(*str);
-		}
 	}
 	
-	return ClearList;
+	return resNode;
 }
 
-list<TWordNCount> SimilarTo(string pattern, TTrie *dict, int diff = 1){
+
+
+list<TWordNCount> __SimilarTo(string pattern, TTrie *typos, TTrie *dict, int diff = 1){
 	list<TWordNCount> similarList;
 	
 	if(pattern.size() == 0){
 		return similarList;
 	}
 	
-	TTrie *temp = new TTrie();
-	
-	
 	cout << "k = 1";
-	list<string> wordsList1 = _SimilarRecursive(pattern);
 	
-	// Transpositions | Deletions | Substitutions | Insertions : 4 stages
-	 
-	cout << "...  completed. size: " << wordsList1.size() << '\n';
-	list<string>::iterator str;
-	if(diff > 1){
-		int i;
-		for(int j = 2; j < diff + 1; j++){
-			cout << "k = " << j;
-			list<string> wordsList2; // triple '$' need for correct concatination
-			wordsList2.push_back(string("$"));
-			wordsList2.push_back(string("$"));
-			wordsList2.push_back(string("$"));
-			
-			for(str = wordsList1.begin(); str != wordsList1.end(); str++){
-				if(*str == "$"){
-					continue;
-				}
-				wordsList2 = _ComplexConcat(wordsList2,_SimilarRecursive(*str));
-			}
-			wordsList1 = _ComplexConcat(wordsList1,_UnicueList(wordsList2));
-			//wordsList1 = _UnicueList(wordsList2);
-			cout << "...  completed. size: " << wordsList1.size() << '\n';
-		}
-	}
+	char *ss = strCpyCreate(pattern.c_str());
+	typos = __SimilarGenerate(ss, 1, typos);
 	
-	wordsList1 = _UnicueList(wordsList1);
-	wordsList1.remove(pattern);
-	
-	//cout << "shifted size: " << wordsList1.size() << '\n';
-	
-	TWordNCount pair;
-	int count;
-	
-	for(str = wordsList1.begin(); str != wordsList1.end(); str++){
-		if(*str == "$"){
-			continue;
-		}
-		count = dict->Search(*str);
-		/*
-		if(*str == "april"){
-			cout << "april exist: " << count << '\n';
-		}else
-		if(*str == "apeil"){
-			cout << "apeil exist: " << count << '\n';
-		}
-		else
-		if(*str == "aprwl"){
-			cout << "aprwl exist: " << count << '\n';
-		}
-		*/
-		if(count){
-			pair.word = *str;
-			pair.count = count;
-			similarList.push_back(pair);
-		}
-	}
-	
-	cout << similarList.size() << '\n';
-	
-	return similarList;
-}
-
-
-list<TWordNCount> Traverse(list<TWordNCount> dictSet, char *pattern, TTrie *trie){
-	for(int i = 0; i < 26; i++){
-		return 
-	}
-}
-
-
-list<TWordNCount> _SimilarTo(string pattern, TTrie *dict, int diff = 1){
-	list<TWordNCount> similarList;
-	
-	if(pattern.size() == 0){
-		return similarList;
-	}
-	
-	TTrie *typos = new TTrie();
-	
-	
-	cout << "k = 1";
-	typos = __SimilarRecursive(pattern,typos);
-	
-	// Transpositions | Deletions | Substitutions | Insertions : 4 stages
-	 
 	cout << "...  completed.\n";
+
 	
-	typos->Print();
+	TTrie *node = typos;
 	
-	//list<string>::iterator str;
 	if(diff > 1){
-		int i;
+		char typoPat[MAXPATLEN];
+		
 		for(int j = 2; j < diff + 1; j++){
 			cout << "k = " << j;
-			list<string> wordsList2; // triple '$' need for correct concatination
-			wordsList2.push_back(string("$"));
-			wordsList2.push_back(string("$"));
-			wordsList2.push_back(string("$"));
-			
-			for(str = wordsList1.begin(); str != wordsList1.end(); str++){
-				if(*str == "$"){
-					continue;
-				}
-				typos = __SimilarRecursive(typos);
+			while(node = Traverse(node, typoPat, j)){
+				typos = __SimilarGenerate(typoPat, j, typos);
 			}
-			wordsList1 = _ComplexConcat(wordsList1,_UnicueList(wordsList2));
-			//wordsList1 = _UnicueList(wordsList2);
+
 			cout << "...  completed\n";
 		}
 	}
 	
-	wordsList1 = _UnicueList(wordsList1);
-	wordsList1.remove(pattern);
-	
-	//cout << "shifted size: " << wordsList1.size() << '\n';
-	
-	TWordNCount pair;
-	int count;
-	
-	for(str = wordsList1.begin(); str != wordsList1.end(); str++){
-		if(*str == "$"){
-			continue;
-		}
-		count = dict->Search(*str);
-		/*
-		if(*str == "april"){
-			cout << "april exist: " << count << '\n';
-		}else
-		if(*str == "apeil"){
-			cout << "apeil exist: " << count << '\n';
-		}
-		else
-		if(*str == "aprwl"){
-			cout << "aprwl exist: " << count << '\n';
-		}
-		*/
-		if(count){
-			pair.word = *str;
-			pair.count = count;
-			similarList.push_back(pair);
-		}
+	node = typos->SearchTypos(pattern);
+	if(node){
+		node->count = 0;
 	}
 	
-	cout << similarList.size() << '\n';
+	similarList = GetTopExistances(typos, dict);
 	
 	return similarList;
 }
-
-
 
 
 	
@@ -651,12 +753,9 @@ int main(int argc, char *argv[]){
 	
 	// extract word and count:
 	while(getline(fdict,line)){
-	//for(int i = 0; i < 10; i++){
-		//getline(fdict,line);
 		delim = line.find(9);
 		str = line.substr(0,delim);
 		
-		// count usualy places in last part of file
 		nxtDelim = delim;
 		do{
 			delim = nxtDelim;
@@ -671,25 +770,30 @@ int main(int argc, char *argv[]){
 		
 		Trie->Include(str, num);
 	}
-	// НУЖНА ОТДЕЛЬНАЯ ОБРАБОТКА СЛУЧАЯ 1ой БУКВЫ
-	list<TWordNCount> List = SimilarTo(pattern,Trie,2);
+	
+	TTrie *typos = new TTrie();
+	
+	list<TWordNCount> List = __SimilarTo(pattern, typos, Trie, 2);
 	
 	cout.setf(ios::fixed);
 	
-	if(List.size() > 0){
+	if(List.size() > 1){
 		string maxProbStr;
 		double maxProb = 0;
 		
-		for(list<TWordNCount>::iterator it = List.begin(); it != List.end(); it++){
-			if((*it).word == "$"){
-				continue;
-			}
-			if(maxProb < ((double)((*it).count)) / sum){
-				maxProb = ((double)((*it).count)) / sum;
-				maxProbStr = (*it).word;
-			}
+		if(List.back().word == " "){
+			List.pop_back();
 		}
-		cout << maxProbStr << ' ' << maxProb << '\n';
+		
+		for(list<TWordNCount>::iterator it = List.begin(); it != List.end(); it++){
+			cout << (*it).word << ' ';
+			if((*it).count < 0){
+				cout << (*it).count / -2;
+			}else{
+				cout << (*it).count;
+			}
+			cout << '\n';
+		}
 	}else{
 		cout << "Something not work - nothing is finded... help me, pls\n";
 	}
