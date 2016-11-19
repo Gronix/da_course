@@ -9,6 +9,14 @@
 #define TYPOSDEPTH 10  // typos generation depth
 #define TOPSIZE 20
 
+// confusion matrices:
+int mDel[27][26];
+int mAdd[27][26];
+int mSub[26][26];
+int mRev[26][26];
+
+double REDUCE_COEF = 0.1;
+
 using namespace std;
 
 
@@ -33,23 +41,33 @@ int abs(int x){
 }
 
 
-bool ProbMoreThan(string candidate, int changeType, int popularity, TWordNCount pairExists){
-	if(abs(pairExists.count) < ((changeType == 1)? 2 : 1) * popularity){
+double pow(double x, int n = 2){
+	double res = 1.0;
+	for(int i = 0; i < n; i++){
+		res *= x;
+	}
+	
+	return res;
+}
+
+
+bool ProbMoreThan(string candidate, int errChanelProb, int typoDist, int popularity, TWordNCount pairExists){
+	if(abs(pairExists.count) < errChanelProb * popularity * ((typoDist == 1)? 1 : pow(REDUCE_COEF, typoDist - 1))){
 		return true;
 	}
 	return false;
 }
 
 
-void CheckTopOf(list<TWordNCount> *List, string newbie, int changeType, int popularity){
+void CheckTopOf(list<TWordNCount> *List, string newbie, int errChanelProb, int typoDist, int popularity){
 	list<TWordNCount>::iterator str1 = List->begin();
 	
 	for(; str1 != List->end(); str1++){
-		if(ProbMoreThan(newbie, changeType, popularity, *str1)){
+		if(ProbMoreThan(newbie, errChanelProb, typoDist, popularity, *str1)){
 			TWordNCount pair;
 			
 			pair.word = newbie;
-			pair.count = ((changeType == 1)? -2 : 1) * popularity;
+			pair.count = errChanelProb * popularity * ((typoDist == 1)? 1 : pow(REDUCE_COEF, typoDist - 1));
 			List->insert(str1, pair);
 			break;
 		}
@@ -57,6 +75,11 @@ void CheckTopOf(list<TWordNCount> *List, string newbie, int changeType, int popu
 	if(List->size() > TOPSIZE){
 		List->pop_back();
 	}
+}
+
+
+inline int ComplexProbability(int curCount, double coeff, int prevProb){
+	return prevProb + curCount + 1;
 }
 
 
@@ -338,7 +361,7 @@ int _CharId(char c){
 		cerr << "WRONG CHAR! : " << (int)c << " " << c << "\n";
 	}
 	return c;
-};
+}
 
 
 int GetInt(string str){
@@ -373,7 +396,7 @@ void _TopExistsRecursive(TTrie *rootTypos, int depth, char *str, list<TWordNCoun
 		int popularity = db->Search(str);
 		
 		if(popularity > 0){
-			CheckTopOf(res, str, rootTypos->count, popularity);
+			CheckTopOf(res, str, rootTypos->count, rootTypos->typoDepth, popularity);
 		}
 		rootTypos->count = 0;
 	}
@@ -479,11 +502,11 @@ char* strCpyBackFrom(char *origin, char *dest, int start = 0, int len = 0){
 
 
 // IF WORD be length 1 its so bad.
-TTrie* __SimilarGenerate(char *pattern, int typosLvl, TTrie *db){
-	int i, pos, k, plen = strLen(pattern);
+TTrie* __SimilarGenerate(char *pattern, int typosLvl, TTrie *db, int prevProb = 0, double coeff = 1.0){
+	int i, pos, k, curCharIdFromPatt, plen = strLen(pattern);
 	char *str = new char[plen + 2];
 	char *spStr[(plen - 1) * 2]; // splitted string without delimiter char: Cnk*2 - 2 = N!/(N-K)!*K!
-
+	
 	
 	// Transpositions
 	{
@@ -495,7 +518,8 @@ TTrie* __SimilarGenerate(char *pattern, int typosLvl, TTrie *db){
 			str[i+1] = str[i];
 			str[i] = c;
 			
-			db->Include(str, 1, typosLvl);
+			//db->Include(str, 1, typosLvl);
+			db->Include(str, ComplexProbability(mRev[ _CharId(str[i]) ][ _CharId(str[i+1]) ], coeff, prevProb), typosLvl);
 			
 			c = str[i+1];
 			str[i+1] = str[i];
@@ -507,7 +531,9 @@ TTrie* __SimilarGenerate(char *pattern, int typosLvl, TTrie *db){
 	{
 		pos = -1;
 		spStr[++pos] = strCpyCreate(pattern, 1);
-		db->Include(spStr[pos], 2, typosLvl);
+		//db->Include(spStr[pos], 2, typosLvl);
+		// количество раз, когда х было написано ошибочно, как ху
+		db->Include(spStr[pos], ComplexProbability(mDel[ 26 ][ _CharId(pattern[0]) ], coeff, prevProb), typosLvl); 
 		
 		for(i = 1; i < plen - 1; i++){
 			spStr[++pos] = strCpyCreate(pattern, 0, i);
@@ -516,11 +542,13 @@ TTrie* __SimilarGenerate(char *pattern, int typosLvl, TTrie *db){
 			str = strCpyFrom(spStr[pos - 1], str);
 			str = strCpyBackFrom(spStr[pos], str);
 			
-			db->Include(str, 2, typosLvl);
+			//db->Include(str, 2, typosLvl);
+			db->Include(str, ComplexProbability(mDel[ _CharId(pattern[i-1]) ][ _CharId(pattern[i]) ], coeff, prevProb), typosLvl);
 		}
 		
 		spStr[++pos] = strCpyCreate(pattern, 0, plen - 1);
-		db->Include(spStr[pos], 2, typosLvl);
+		//db->Include(spStr[pos], 2, typosLvl);
+		db->Include(spStr[pos], ComplexProbability(mDel[ _CharId(pattern[plen-2]) ][ _CharId(pattern[plen-1]) ], coeff, prevProb), typosLvl);
 	}
 	
 	// Substitutions
@@ -528,10 +556,13 @@ TTrie* __SimilarGenerate(char *pattern, int typosLvl, TTrie *db){
 		str[0] = 'a';
 		str[1] = 0;
 		str = strCpyBackFrom(spStr[0], str);
-		db->Include(str, 3, typosLvl);
+		//db->Include(str, 3, typosLvl);
+		curCharIdFromPatt = _CharId(pattern[0]);
+		db->Include(str, ComplexProbability(mSub[ 0 ][ curCharIdFromPatt ], coeff, prevProb), typosLvl);
 		for(i = 1; i < ALPHABET; i++){
 			str[0] = (char)(97 + i);
-			db->Include(str, 3, typosLvl);
+			//db->Include(str, 3, typosLvl);
+			db->Include(str, ComplexProbability(mSub[ i ][ curCharIdFromPatt ], coeff, prevProb), typosLvl);
 		}
 
 		pos = 1;
@@ -541,82 +572,108 @@ TTrie* __SimilarGenerate(char *pattern, int typosLvl, TTrie *db){
 			str[k] = 'a';
 			str[k + 1] = 0;
 			str = strCpyBackFrom(spStr[pos + 1], str);
-			db->Include(str, 3, typosLvl);
+			
+			curCharIdFromPatt = _CharId(pattern[k]);
+			
+			//db->Include(str, 3, typosLvl);
+			db->Include(str, ComplexProbability(mSub[ 0 ][ curCharIdFromPatt ], coeff, prevProb), typosLvl);
 			for(i = 1; i < ALPHABET; i++){
 				str[k] = (char)(i + 97);
-				db->Include(str, 3, typosLvl);
+				//db->Include(str, 3, typosLvl);
+				db->Include(str, ComplexProbability(mSub[ i ][ curCharIdFromPatt ], coeff, prevProb), typosLvl);
 			}
 			pos += 2;
 		}
 		// pos должен быть равен 2n - 1
 		
+		
 		str = strCpyFrom(spStr[pos], str);
 		k = strLen(spStr[pos]);
 		str[k + 1] = 0;
+		
+		curCharIdFromPatt = _CharId(pattern[k]);
+		
 		for(i = 0; i < ALPHABET; i++){
 			str[k] = (char)(97 + i);
-			db->Include(str, 3, typosLvl);
+			//db->Include(str, 3, typosLvl);
+			db->Include(str, ComplexProbability(mSub[ i ][ curCharIdFromPatt ], coeff, prevProb), typosLvl);
 		}
 	}
 	
 	// Insertions
-	{
+	{ 
 		str[0] = 'a';
 		str[1] = 0;
 		str = strCpyBackFrom(pattern, str);
-		db->Include(str, 4, typosLvl);
+		//db->Include(str, 4, typosLvl);
+		db->Include(str, mAdd[ 26 ][ 0 ], typosLvl);
 		for(i = 1; i < ALPHABET; i++){
 			str[0] = (char)(97 + i);
-			db->Include(str, 4, typosLvl);
+			//db->Include(str, 4, typosLvl);
+			db->Include(str, ComplexProbability(mAdd[ 26 ][ i ], coeff, prevProb), typosLvl);
 		}
 		
 		if(plen > 1){
+			curCharIdFromPatt = _CharId(str[0]);
+			
 			str[0] = pattern[0];
 			str[1] = 'a';
 			str[2] = 0;
 			str = strCpyBackFrom(spStr[0], str);
-			db->Include(str, 4, typosLvl);
+			//db->Include(str, 4, typosLvl);
+			db->Include(str, ComplexProbability(mAdd[ curCharIdFromPatt ][ 0 ], coeff, prevProb), typosLvl);
 			for(i = 1; i < ALPHABET; i++){
 				str[1] = (char)(97 + i);
-				db->Include(str, 4, typosLvl);
+				//db->Include(str, 4, typosLvl);
+				db->Include(str, ComplexProbability(mAdd[ curCharIdFromPatt ][ i ], coeff, prevProb), typosLvl);
 			}
 			
 			
 			if(plen > 2){
-				pos = 1;
-				for(int j = 1; j < plen - 1; j++){ // first and last positions processed separately
+				pos = 3;
+				for(int j = 2; j < plen - 1; j++){ // first and last positions processed separately
 					k = strLen(spStr[pos]);
+					curCharIdFromPatt = _CharId(pattern[k - 1]);
+					
 					str = strCpyFrom(spStr[pos],str);
 					str[k] = 'a';
 					str[k + 1] = pattern[j];
 					str[k + 2] = 0;
 					str = strCpyBackFrom(spStr[pos + 1], str);
-					db->Include(str, 4, typosLvl);
+					//db->Include(str, 4, typosLvl);
+					db->Include(str, ComplexProbability(mAdd[ curCharIdFromPatt ][ 0 ], coeff, prevProb), typosLvl);
 					for(i = 1; i < ALPHABET; i++){
 						str[k] = (char)(i + 97);
-						db->Include(str, 4, typosLvl);
+						//db->Include(str, 4, typosLvl);
+						db->Include(str, ComplexProbability(mAdd[ curCharIdFromPatt ][ i ], coeff, prevProb), typosLvl);
 					}
 					pos += 2;
 				}
 				
 				k = strLen(spStr[pos]);
+				curCharIdFromPatt = _CharId(str[k - 1]);
+				
 				str = strCpyFrom(spStr[pos], str);
 				str[k] = 'a';
 				str[k + 1] = 0;
 				str = strCpyBackFrom(spStr[pos - 1], str);
-				db->Include(str, 4, typosLvl);
+				//db->Include(str, 4, typosLvl);
+				db->Include(str, ComplexProbability(mAdd[ curCharIdFromPatt ][ 0 ], coeff, prevProb), typosLvl);
 				for(i = 1; i < ALPHABET; i++){
 					str[k] = (char)(97 + i);
-					db->Include(str, 4, typosLvl);
+					//db->Include(str, 4, typosLvl);
+					db->Include(str, ComplexProbability(mAdd[ curCharIdFromPatt ][ i ], coeff, prevProb), typosLvl);
 				}
 			}
 		}
 		
+		curCharIdFromPatt = _CharId(str[plen - 1]);
 		str = strCpyFrom(pattern, str);
 		str[plen + 1] = 0;
 		for(i = 0; i < ALPHABET; i++){
 			str[plen] = (char)(97 + i);
-			db->Include(str, 4, typosLvl);
+			//db->Include(str, 4, typosLvl);
+			db->Include(str, ComplexProbability(mAdd[ curCharIdFromPatt ][ i ], coeff, prevProb), typosLvl);
 		}
 		
 	}
@@ -691,7 +748,6 @@ TTrie* Traverse(TTrie *startNode, char *pattern, int lvl){
 }
 
 
-
 list<TWordNCount> __SimilarTo(string pattern, TTrie *typos, TTrie *dict, int diff = 1){
 	list<TWordNCount> similarList;
 	
@@ -706,6 +762,7 @@ list<TWordNCount> __SimilarTo(string pattern, TTrie *typos, TTrie *dict, int dif
 	
 	cout << "...  completed.\n";
 
+	cout << "actress: " << typos->Search(string("actress")) << endl;
 	
 	TTrie *node = typos;
 	
@@ -715,7 +772,8 @@ list<TWordNCount> __SimilarTo(string pattern, TTrie *typos, TTrie *dict, int dif
 		for(int j = 2; j < diff + 1; j++){
 			cout << "k = " << j;
 			while(node = Traverse(node, typoPat, j)){
-				typos = __SimilarGenerate(typoPat, j, typos);
+				typos = __SimilarGenerate(typoPat, j, typos, node->count, REDUCE_COEF);
+				//typos = __SimilarGenerate(typoPat, j, typos, node->count);
 			}
 
 			cout << "...  completed\n";
@@ -733,6 +791,46 @@ list<TWordNCount> __SimilarTo(string pattern, TTrie *typos, TTrie *dict, int dif
 }
 
 
+void packRow(int *matrix, int row, string line){
+	int num, i;
+	
+	i = -1;
+	for(int col = 0; col < 25; col++){
+		num = 0;
+		while(line[++i] != ' '){
+			num = (line[i] - 48) + 10 * num;
+		}
+		*(matrix + row * 26 + col) = num;
+	}
+	num = 0;
+	while(line[++i] != 0){
+		num = (line[i] - 48) + 10 * num;
+	}
+	*(matrix + row * 26 + 25) = num;
+}
+
+
+void readMatrices(int *matrices[]){
+	char sdel[] = "_del_counts.txt";   // количество раз, когда x было ошибочно написано как xy
+	char sadd[] = "_add_counts.txt";   // -||-  ху было ошибочно написано как х
+	char ssub[] = "_subst_counts.txt"; // -||-  у было написано как х
+	char srev[] = "_rev_counts.txt";   // -||-  ху было написано как ух
+	
+	string line;
+	int row;
+	
+	char *fName[] = {sdel, sadd, ssub, srev};
+	
+	for(int id = 0; id < 4; id++){
+		ifstream file(fName[id]);
+		row = 0;
+		while(getline(file, line)){
+			packRow(matrices[id], row, line);
+			row++;
+		}
+	}
+}
+
 	
 int main(int argc, char *argv[]){
 	if(argc < 3){
@@ -747,6 +845,17 @@ int main(int argc, char *argv[]){
 		return 2;
 	}
 	
+	
+	//  *** READ CONFUSION MATRICES: ***
+	
+	int *matrices[] = {&mDel[0][0], &mAdd[0][0], &mSub[0][0], &mRev[0][0]};
+	
+	readMatrices(matrices);
+	
+	//  *** END READ ***
+	
+	
+	
 	string line, str;
 	
 	TTrie *Trie = new TTrie();
@@ -754,7 +863,7 @@ int main(int argc, char *argv[]){
 	
 	int nxtDelim, delim, num, sum = 0;
 	
-	// extract word and count:
+	// extract words and count:
 	while(getline(fdict,line)){
 		delim = line.find(9);
 		str = line.substr(0,delim);
@@ -789,13 +898,15 @@ int main(int argc, char *argv[]){
 		}
 		
 		for(list<TWordNCount>::iterator it = List.begin(); it != List.end(); it++){
-			cout << (*it).word << ' ';
-			if((*it).count < 0){
+			cout << (*it).word << ' ' << (*it).count << endl;
+			
+			//cout << (*it).word << ' ';
+			/* if((*it).count < 0){
 				cout << (*it).count / -2;
 			}else{
 				cout << (*it).count;
-			}
-			cout << '\n';
+			 }
+			cout << '\n';*/
 		}
 	}else{
 		cout << "Something not work - nothing is finded... help me, pls\n";
