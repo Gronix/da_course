@@ -899,14 +899,6 @@ int main(int argc, char *argv[]){
 		
 		for(list<TWordNCount>::iterator it = List.begin(); it != List.end(); it++){
 			cout << (*it).word << ' ' << (*it).count << endl;
-			
-			//cout << (*it).word << ' ';
-			/* if((*it).count < 0){
-				cout << (*it).count / -2;
-			}else{
-				cout << (*it).count;
-			 }
-			cout << '\n';*/
 		}
 	}else{
 		cout << "Something not work - nothing is finded... help me, pls\n";
