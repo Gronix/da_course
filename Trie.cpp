@@ -3,11 +3,18 @@
 #include <string>
 #include <list>
 
-#define ALPHABET 26 // |Alphabet|
+#define ADDITINALCHARS 4 	// 4x : \space, -, ', . 
+#define ALPHABET 26  		// |Alphabet| 
+#define ALPHABETALL ALPHABET + ADDITINALCHARS
 #define MAXINT 2147483647
 #define MAXPATLEN 100
 #define TYPOSDEPTH 10  // typos generation depth
 #define TOPSIZE 20
+#define RELIABLELEN 6 // shifted by start index of cicle = 1
+
+class TTrie;
+TTrie *trie;
+
 
 // confusion matrices:
 int mDel[27][26];
@@ -25,6 +32,8 @@ typedef struct {
 	int count;
 } TWordNCount;
 
+
+	// Secondary functions:
 
 int strLen(const char *str){
 	int len = -1;
@@ -83,20 +92,63 @@ inline int ComplexProbability(int curCount, double coeff, int prevProb){
 }
 
 
+int _CharId(char c){
+	if(65 <= c and c < 91){
+		c -= 65;
+	}else
+	if(97 <= c and c < 123){
+		c -= 97;
+	}else
+	if(c == ' ' or c == '\t'){
+		c = 26;
+	}else
+	if(c == '-'){
+		c = 27;
+	}else
+	if(c == '\''){
+		c = 28;
+	}else
+	if(c == '.'){
+		c = 29;
+	}
+	else{
+		cerr << "WRONG CHAR! : " << (int)c << " " << c << "\n";
+	}
+	return c;
+}
+
+int GetInt(string str){
+	int i = -1, x = 0;
+	while(str[++i]){
+		x = str[i] - 48 + x*10;
+	}
+	return x;
+}
+
+int GetInt(char *str){
+	int i = -1, x = 0;
+	while(str[++i]){
+		x = str[i] - 48 + x*10;
+	}
+	return x;
+}
+
+
+
 class TTrie{
 public:
 	char c;
 	int count;
 	int typoDepth;
 	TTrie *parent;
-	TTrie *child[ALPHABET]; 
+	TTrie *child[ALPHABETALL]; 
 	
 	
 	TTrie(void){
 		c = '_';
 		count = 0;
 		parent = NULL;
-		for(int i = 0; i < ALPHABET; i++){
+		for(int i = 0; i < ALPHABETALL; i++){
 			child[i] = NULL;
 		}
 	};
@@ -106,7 +158,7 @@ public:
 		c = ch;
 		count = 0;
 		parent = NULL;
-		for(int i = 0; i < ALPHABET; i++){
+		for(int i = 0; i < ALPHABETALL; i++){
 			child[i] = NULL;
 		}
 	};
@@ -116,7 +168,7 @@ public:
 		c = ch;
 		count = 0;
 		parent = p;
-		for(int i = 0; i < ALPHABET; i++){
+		for(int i = 0; i < ALPHABETALL; i++){
 			child[i] = NULL;
 		}
 	};
@@ -140,6 +192,8 @@ public:
 	};
 
 	
+	// Search and Print funcitons:
+
 	int Search(char *str){
 		int i, answer = 0, size = strLen(str);
 		TTrie *node = this;
@@ -213,7 +267,7 @@ public:
 		}
 		stream << "\n";
 		
-		for(int i = 0; i < ALPHABET; i++){
+		for(int i = 0; i < ALPHABETALL; i++){
 			if(child[i]){
 				child[i]->xPrint(stream, lvl + 1);
 			}
@@ -231,7 +285,7 @@ public:
 		}
 		cout << "\n";
 		
-		for(int i = 0; i < ALPHABET; i++){
+		for(int i = 0; i < ALPHABETALL; i++){
 			if(child[i]){
 				child[i]->Print(lvl + 1);
 			}
@@ -239,12 +293,125 @@ public:
 	}
 	
 	
+	// Save & Load functions:
+
+	bool _LoadRecursive(ifstream &input){
+		char mask[ALPHABETALL];
+		int i;
+		
+		input.read(&c, sizeof c);
+		input.read(reinterpret_cast<char*>(&count), sizeof count);
+		input.read(reinterpret_cast<char*>(&typoDepth), sizeof typoDepth);
+		input.read(mask, ALPHABETALL);
+		
+		for(i = 0; i < ALPHABETALL; i++){
+			if(mask[i]){
+				TTrie *node = new TTrie();
+				child[i] = node;
+				node->parent = this;
+				node->_LoadRecursive(input);
+			}
+		}
+		
+		if(i != ALPHABETALL){
+			cerr << "some error with loading..." << endl;
+			return false;
+		}
+		return true;
+	}
+	
+	
+	bool Load(char *fname){
+		ifstream input(fname, ios::binary);
+		
+		if(!input.is_open()){
+			cerr << "Can't open input file" << endl;
+			return false;
+		}
+		
+		if(_LoadRecursive(input)){
+			input.close();
+			return true;
+		}else{
+			input.close();
+			return false;
+		}
+	}
+	
+	
+	bool _SaveRecursive(ofstream &out){
+		char mask[ALPHABETALL] = {0};
+		int i;
+		for(i = 0; i < ALPHABETALL; i++){
+			if(child[i]){
+				mask[i] = 1;
+			}
+		}
+		
+		out.write(&c, sizeof c);
+		out.write(reinterpret_cast<const char*>(&count), sizeof count);
+		out.write(reinterpret_cast<const char*>(&typoDepth), sizeof typoDepth);
+		out.write(mask, sizeof mask);
+
+		for(i = 0; i < ALPHABETALL; i++){
+			if(mask[i]){
+				child[i]->_SaveRecursive(out);
+			}
+		}
+		
+		if(i != ALPHABETALL){
+			cerr << "some err..." << endl;
+			return false;
+		}
+		
+		return true;
+	}
+	
+
+	bool Save(char *fname){
+		ofstream outFile(fname, ios::binary);
+		
+		if(!outFile.is_open()){
+			cerr << "Can't open a dict file\n";
+			return false;
+		}
+		
+		if(_SaveRecursive(outFile)){
+			outFile.close();
+			return true;
+		}else{
+			outFile.close();
+			return false;
+		}
+		
+		
+	}
+	
+	
+/* 	 " "  = 26 // space and tab
+	" - " = 27
+	" ' " = 28
+	" . " = 29;
+ */
+	
 	int _CharId(char c){
-		if((65 <= c) and (c < 91)){
+		if(65 <= c and c < 91){
 			c -= 65;
 		}else
-		if((97 <= c) and (c < 123)){
+		if(97 <= c and c < 123){
 			c -= 97;
+		}else
+		if(c == 32 or c == '\t'){
+			c = 26;
+		}else
+		if(c == '-'){
+			c = 27;
+		}else
+		if(c == '\''){
+			c = 28;
+		}else
+		if(c == '.'){
+			c = 29;
 		}
 		else{
 			cerr << "WRONG CHAR! : " << (int)c << " " << c << "\n";
@@ -253,6 +420,16 @@ public:
 	};
 	
 private:
+
+	char _ToLow(char c){
+		if((65 <= c) and (c <= 90)){
+			c += 22;
+		}
+		return c;
+	};
+
+
+	//Recursive functions - include and create branch:
 
 	bool _IncludeRecursive(int pos, char *str, int countNum, int genTypos){
 		if(pos == strLen(str) - 1){
@@ -339,53 +516,15 @@ private:
 		
 		return root;
 	};
-	
-	
-	char _ToLow(char c){
-		if((65 <= c) and (c <= 90)){
-			c += 22;
-		}
-		return c;
-	};
+
 };
 
-
-int _CharId(char c){
-	if((65 <= c) and (c < 91)){
-		c -= 65;
-	}else
-	if((97 <= c) and (c < 123)){
-		c -= 97;
-	}
-	else{
-		cerr << "WRONG CHAR! : " << (int)c << " " << c << "\n";
-	}
-	return c;
-}
-
-
-int GetInt(string str){
-	int i = -1, x = 0;
-	while(str[++i]){
-		x = str[i] - 48 + x*10;
-	}
-	return x;
-}
-
-
-int GetInt(char *str){
-	int i = -1, x = 0;
-	while(str[++i]){
-		x = str[i] - 48 + x*10;
-	}
-	return x;
-}
-
+	// Construct top of variants:
 
 void _TopExistsRecursive(TTrie *rootTypos, int depth, char *str, list<TWordNCount> *res, TTrie *db){
 	str[depth] = rootTypos->c;
 	
-	for(int i = 0; i < ALPHABET; i++){
+	for(int i = 0; i < ALPHABETALL; i++){
 		if(rootTypos->child[i]){
 			_TopExistsRecursive(rootTypos->child[i], depth + 1, str, res, db);
 		}
@@ -416,7 +555,7 @@ list<TWordNCount> GetTopExistances(TTrie *sample, TTrie *db){
 	res.push_back(dummy);
 	
 	if(sample->c == '_'){
-		for(int i = 0; i < ALPHABET; i++){
+		for(int i = 0; i < ALPHABETALL; i++){
 			if(!sample->child[i]){
 				continue;
 			}
@@ -429,6 +568,9 @@ list<TWordNCount> GetTopExistances(TTrie *sample, TTrie *db){
 	return res;
 }
 
+
+
+	// String functions:
 
 // UnSafe function: dont check str "dest" to memory corruptions!
 char* strCpyFrom(char *origin, char *dest, int start = 0, int len = 0){
@@ -500,6 +642,72 @@ char* strCpyBackFrom(char *origin, char *dest, int start = 0, int len = 0){
 	return dest;
 }
 
+
+
+	// Traverse:
+
+TTrie* _TraverseRec(TTrie *root, char *pattern, int lvl, int pos){
+	TTrie *resNode;
+	
+	pattern[pos] = root->c;
+	for(int i = 0; i < ALPHABETALL; i++){
+		if(!root->child[i]){
+			continue;
+		}
+		resNode = _TraverseRec(root->child[i], pattern, lvl, pos + 1);
+		if(resNode){
+			return resNode;
+		}
+	}
+	if(root->count > 0 && root->typoDepth == lvl){
+		pattern[pos + 1] = 0;
+		resNode = root;
+	}else{
+		resNode = NULL;
+	}
+	
+	return resNode;
+}
+
+
+TTrie* Traverse(TTrie *startNode, char *pattern, int lvl){
+	int newChId;
+	TTrie *resNode;
+	
+	lvl--;
+	if(startNode->c != '_'){
+		int pos = strLen(pattern);
+		char prevCh;
+		do{
+			prevCh = startNode->c;
+			startNode = startNode->parent;
+			newChId = _CharId(prevCh) + 1;
+			pos--;
+			while(newChId < ALPHABETALL){
+				if(startNode->child[newChId]){
+					resNode = _TraverseRec(startNode->child[newChId], pattern, lvl, pos);
+					if(resNode){
+						return resNode;
+					}
+				}
+				newChId++;
+			}
+		}while(startNode->c != '_');
+	}else{
+		for(int i = 0; i < ALPHABETALL; i++){
+			resNode = _TraverseRec(startNode->child[i], pattern, lvl, 0);
+			if(resNode){
+				break;
+			}
+		}
+	}
+	
+	return resNode;
+}
+
+
+
+	// Similar generate:
 
 // IF WORD be length 1 its so bad.
 TTrie* __SimilarGenerate(char *pattern, int typosLvl, TTrie *db, int prevProb = 0, double coeff = 1.0){
@@ -688,66 +896,6 @@ TTrie* __SimilarGenerate(char *pattern, int typosLvl, TTrie *db, int prevProb = 
 }
 
 
-TTrie* _TraverseRec(TTrie *root, char *pattern, int lvl, int pos){
-	TTrie *resNode;
-	
-	pattern[pos] = root->c;
-	for(int i = 0; i < ALPHABET; i++){
-		if(!root->child[i]){
-			continue;
-		}
-		resNode = _TraverseRec(root->child[i], pattern, lvl, pos + 1);
-		if(resNode){
-			return resNode;
-		}
-	}
-	if(root->count > 0 && root->typoDepth == lvl){
-		pattern[pos + 1] = 0;
-		resNode = root;
-	}else{
-		resNode = NULL;
-	}
-	
-	return resNode;
-}
-
-
-TTrie* Traverse(TTrie *startNode, char *pattern, int lvl){
-	int newChId;
-	TTrie *resNode;
-	
-	lvl--;
-	if(startNode->c != '_'){
-		int pos = strLen(pattern);
-		char prevCh;
-		do{
-			prevCh = startNode->c;
-			startNode = startNode->parent;
-			newChId = _CharId(prevCh) + 1;
-			pos--;
-			while(newChId < ALPHABET){
-				if(startNode->child[newChId]){
-					resNode = _TraverseRec(startNode->child[newChId], pattern, lvl, pos);
-					if(resNode){
-						return resNode;
-					}
-				}
-				newChId++;
-			}
-		}while(startNode->c != '_');
-	}else{
-		for(int i = 0; i < ALPHABET; i++){
-			resNode = _TraverseRec(startNode->child[i], pattern, lvl, 0);
-			if(resNode){
-				break;
-			}
-		}
-	}
-	
-	return resNode;
-}
-
-
 list<TWordNCount> __SimilarTo(string pattern, TTrie *typos, TTrie *dict, int diff = 1){
 	list<TWordNCount> similarList;
 	
@@ -762,7 +910,7 @@ list<TWordNCount> __SimilarTo(string pattern, TTrie *typos, TTrie *dict, int dif
 	
 	cout << "...  completed.\n";
 
-	cout << "actress: " << typos->Search(string("actress")) << endl;
+	//cout << "actress: " << typos->Search(string("actress")) << endl;
 	
 	TTrie *node = typos;
 	
@@ -775,8 +923,27 @@ list<TWordNCount> __SimilarTo(string pattern, TTrie *typos, TTrie *dict, int dif
 				typos = __SimilarGenerate(typoPat, j, typos, node->count, REDUCE_COEF);
 				//typos = __SimilarGenerate(typoPat, j, typos, node->count);
 			}
-
 			cout << "...  completed\n";
+		}
+	}
+	
+	// Generate patritions:
+	{
+		if(pattern.size() > 1){
+			int i, prob = 0, plen = pattern.size();
+			char *str = new char[plen + 2];
+			
+			for( i = 1; i < plen - 1; i++){
+				str = strCpyFrom(ss, str, 0, i);
+				str[i] = 0;
+				prob = dict->Search(str) * pow(0.1, RELIABLELEN - i + 1);
+				str[i] = ' ';
+				str[i + 1] = 0;
+				str = strCpyBackFrom(ss, str, i);
+				prob += dict->Search(str + i + 1) * pow(0.1, RELIABLELEN - plen + i + 1);
+				typos->Include(str, ComplexProbability(prob, 1.0, 0), 1);
+			}
+			delete[] str;
 		}
 	}
 	
@@ -786,11 +953,15 @@ list<TWordNCount> __SimilarTo(string pattern, TTrie *typos, TTrie *dict, int dif
 	}
 	
 	similarList = GetTopExistances(typos, dict);
+	delete[] ss;
 	
 	return similarList;
 }
 
 
+
+	// Read matricies:
+	
 void packRow(int *matrix, int row, string line){
 	int num, i;
 	
@@ -807,6 +978,7 @@ void packRow(int *matrix, int row, string line){
 		num = (line[i] - 48) + 10 * num;
 	}
 	*(matrix + row * 26 + 25) = num;
+
 }
 
 
@@ -831,61 +1003,141 @@ void readMatrices(int *matrices[]){
 	}
 }
 
+
 	
 int main(int argc, char *argv[]){
-	if(argc < 3){
+	/* if(argc < 3){
 		cout << "Error Bro: set correct input, pls: prog file pattern\n";
 		return 1;
 	}
 	
-	ifstream fdict (argv[1]);
+	ifstream fUnigrams (argv[1]);
+	 */
+	 
+	bool needToSave = false;
+	char dictName[] = "fdict_bin";
+	int sum = 0;
+	string pattern = string(argv[1]);
 	
-	if(!fdict.is_open()){
-		cout << "Error Bro: can't open file, help me, pls\n";
-		return 2;
+	//TTrie *trie = new TTrie();
+	trie = new TTrie();
+	if(!trie->Load(dictName)){
+		needToSave = true;
+		
+		ifstream fUnigrams("wcounts.txt");
+		ifstream fBigrams("w2_.txt");
+		ifstream fTrigrams("w3_.txt");
+		 
+		if(!fUnigrams.is_open() || !fBigrams.is_open() || !fTrigrams.is_open()){
+			cout << "Error Bro: can't open some files, help me, pls\n";
+			return 2;
+		}
+		
+		string line, str;
+		
+		//string pattern = string(argv[2]);
+		
+		int nxtDelim, delim, num;
+		
+		// extract unigram words and counts:
+		while(getline(fUnigrams, line)){
+			delim = line.find(9);
+			str = line.substr(0,delim);
+			
+			nxtDelim = delim;
+			do{
+				delim = nxtDelim;
+				nxtDelim = line.find('\t',nxtDelim + 1);
+			}while(0 <= nxtDelim);
+			
+			num = GetInt(line.substr(delim + 1));
+			sum += num;
+			if(MAXINT - num < sum){
+				cout << "overflow!\n";
+			}
+			
+			trie->Include(str, num);
+		}
+	
+		cout << "unigram extracted" << endl;
+		
+		//extract bigrams:
+		while(getline(fBigrams, line)){
+			delim = line.find('\t');
+			num = GetInt(line.substr(0, delim));
+			
+			delim++;
+			nxtDelim = line.find('\t', delim);
+			str = line.substr(delim, nxtDelim - delim);
+			
+			nxtDelim++;
+			str += ' ';
+			str += line.substr(nxtDelim);
+			
+			trie->Include(str, num);
+		}
+		
+		cout << "bigram extracted" << endl;
+		
+		//extract trigrams:
+		while(getline(fTrigrams, line)){
+			delim = line.find('\t');
+			num = GetInt(line.substr(0, delim));
+			
+			delim++;
+			nxtDelim = line.find('\t', delim);
+			str = line.substr(delim, nxtDelim - delim);
+			
+			nxtDelim++;
+			delim = line.find('\t', nxtDelim);
+			str += ' ';
+			str += line.substr(nxtDelim, delim - nxtDelim);
+			
+			delim++;
+			str += ' ';
+			str += line.substr(delim);
+			
+			trie->Include(str, num);
+		}
+		
+		cout << "trigram extracted" << endl;
+		
+		fUnigrams.close();
+		fBigrams.close();
+		fTrigrams.close();
 	}
 	
+	cout << "dictionary constructed" << endl;
+	
+	if(argc >= 3){
+		if(pattern == "-s"){
+			pattern = argv[2];
+			for(int i = 3; i < argc; i++){
+				pattern += ' ';
+				pattern += argv[i];
+			}
+			
+			cout << pattern << ' ' << trie->Search(pattern) << endl;
+	
+			if(needToSave){
+				trie->Save(dictName);
+			}
+	
+			return 0;
+		}
+	}
 	
 	//  *** READ CONFUSION MATRICES: ***
 	
 	int *matrices[] = {&mDel[0][0], &mAdd[0][0], &mSub[0][0], &mRev[0][0]};
-	
 	readMatrices(matrices);
 	
 	//  *** END READ ***
 	
 	
-	
-	string line, str;
-	
-	TTrie *Trie = new TTrie();
-	string pattern = string(argv[2]);
-	
-	int nxtDelim, delim, num, sum = 0;
-	
-	// extract words and count:
-	while(getline(fdict,line)){
-		delim = line.find(9);
-		str = line.substr(0,delim);
-		
-		nxtDelim = delim;
-		do{
-			delim = nxtDelim;
-			nxtDelim = line.find('\t',nxtDelim + 1);
-		}while(0 <= nxtDelim);
-		
-		num = GetInt(line.substr(delim + 1));
-		sum += num;
-		if(MAXINT - num < sum){
-			cout << "overflow!\n";
-		}
-		
-		Trie->Include(str, num);
-	}
-	
 	TTrie *typos = new TTrie();
 	
-	list<TWordNCount> List = __SimilarTo(pattern, typos, Trie, 2);
+	list<TWordNCount> List = __SimilarTo(pattern, typos, trie, 2);
 	
 	cout.setf(ios::fixed);
 	
@@ -906,6 +1158,9 @@ int main(int argc, char *argv[]){
 	
 	cout << "\nSUM: " << sum << '\n';
 	
-	fdict.close();
+	if(needToSave){
+		trie->Save(dictName);
+	}
+	
 	return 0;
 }
