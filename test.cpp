@@ -3,17 +3,36 @@
 #include <list>
 #include <fstream>
 #include <vector>
+#include <deque>
 
 using namespace std;
  
+deque<int>* Test(int num){
+	int i;
+	deque<int> *deq_test = new deque<int>;
+	for(i = 0; i < num; i++){
+		deq_test->push_front(i);
+	}
+	return deq_test;
+}
+
 int main(int argc, char *argv[]){
-	char ch1 = 'a';
-	char ch2 = 'Z';
-	char ch3 = '\n';
-	char ch0 = '\0';
-	int i1 = 10;
-	int i0 = 0;
-	int im = -2;
-	cout << (bool)ch1 << " " << (bool)ch2 << " " << (bool)ch3 << " " << (bool)ch0 << endl;
-	cout << (bool)i1 << " " << (bool)i0 << " " << (bool)im << endl;
+	deque<int> deq1(1);
+	deque<int> *deq2;
+	int *test;
+	
+	cout << sizeof(deq2) << endl;
+
+	deq2 = Test(3);
+
+	cout << sizeof(deq1) << endl;
+	cout << sizeof(deq2) << endl;
+	cout << "+++++++++" << endl;
+
+	cout << deq1.size() << " " << deq2->size() << endl;
+
+	cout << "~~~~~~" << endl;
+	cout << test << " " << sizeof(test) << endl;
+	test = new int(10);
+	cout << *test << " " << test << " " << sizeof(test) << endl;
 }

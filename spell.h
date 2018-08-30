@@ -2,6 +2,7 @@
 #define __SPELLCH_H__
 
 #include <string>
+#include <deque>
 #include <iostream>
 #include <fstream>
 #include <algorithm>

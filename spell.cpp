@@ -243,8 +243,9 @@ void TStringVersions::Spell(TSpecString *spec_str, TTrie *dict){
 	}
 
 	int i, j, word_count;
-	double maxProb;
-	list<TWordNProb> *variants[LANGMODEL];
+	double max_prob, fst_pair_prob;
+	list<TWordNProb> variants[LANGMODEL];
+	deque<char*> sentence[LANGMODEL];
 	TTrie *typos;
 	word_count = 0;
 	// стадия первая - набираем до 3 слов в стартовый набор
