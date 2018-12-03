@@ -4,6 +4,8 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <sstream> 
+#include <iomanip>
 
 	// std::string functions:
 int strLen(const char *str);
@@ -12,13 +14,16 @@ char* strCpyFrom(char *origin, char *dest, int start = 0, int len = 0);
 char* strCpyCreate(const char *origin, int start = 0, int len = 0);
 // UnSafe function: dont check str "dest" to memory corruptions!
 char* strCpyBackFrom(char *origin, char *dest, int start = 0, int len = 0);
+int strFind(char *str, char c, int start = 0, int len = -1);
 char toLow(char);
 
 	// Secondary functions:
+inline int plus_part(int x);
+inline double plus_part(double x);
 int mabs(int x);
 double mabs(double x);
-double pow(double x, int n = 2);
-int _CharId(char c);
+double mpow(double x, int n = 2);
+// int _CharId(char c);
 double GetDouble(std::string str);
 double GetDouble(char *str);
 int GetInt(std::string str);

@@ -1,38 +1,34 @@
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <list>
 #include <fstream>
 #include <vector>
 #include <deque>
 
+//#include <iostream>
+//#include <fstream>
+
 using namespace std;
- 
-deque<int>* Test(int num){
-	int i;
-	deque<int> *deq_test = new deque<int>;
-	for(i = 0; i < num; i++){
-		deq_test->push_front(i);
-	}
-	return deq_test;
-}
+
+typedef struct{
+	double n;
+	char *s;
+} st;
 
 int main(int argc, char *argv[]){
-	deque<int> deq1(1);
-	deque<int> *deq2;
-	int *test;
-	
-	cout << sizeof(deq2) << endl;
+	list<st*> *l = new list<st*>;
 
-	deq2 = Test(3);
+	char *s = new char[4];
+	s[0] = 'x';
+	s[1] = 'y';
+	s[2] = 'u';
+	s[3] = '\0';
 
-	cout << sizeof(deq1) << endl;
-	cout << sizeof(deq2) << endl;
-	cout << "+++++++++" << endl;
 
-	cout << deq1.size() << " " << deq2->size() << endl;
-
-	cout << "~~~~~~" << endl;
-	cout << test << " " << sizeof(test) << endl;
-	test = new int(10);
-	cout << *test << " " << test << " " << sizeof(test) << endl;
+	st *temp = new st;
+	temp->n = 100;
+	temp->s = s;
+	l->push_front(temp);
+	cout << l->size() << endl;
 }

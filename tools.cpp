@@ -8,6 +8,31 @@ int strLen(const char *str){
 	return len;
 }
 
+// UnSafe function: dont check whether '\0' got, i.e. start + len < strLen(str) !
+int strFind(char *str, char c, int start, int len){
+	int i = 0;
+	str += start;
+	if(len == -1){
+		while(*str){
+			if(*str == c){
+				return i;
+			}
+			i++;
+			str++;
+		}
+	}
+	else{
+		while(i <= len){
+			if(*str == c){
+				return i;
+			}
+			i++;
+			str++;
+		}
+	}
+	return -1;
+}
+
 // UnSafe function: dont check str "dest" to memory corruptions!
 char* strCpyFrom(char *origin, char *dest, int start, int len){
 	if(len == 0){
@@ -87,6 +112,14 @@ char toLow(char chr){
 
 	// Secondary functions:
 
+int plus_part(int x){
+	return (x < 0)? 0: x;
+}
+
+double plus_part(double x){
+	return (x < 0.)? 0.: x;
+}
+
 
 int mabs(int x){
 	if(x < 0){
@@ -103,7 +136,7 @@ double mabs(double x){
 }
 
 
-double pow(double x, int n){
+double mpow(double x, int n){
 	double res = 1.0;
 	for(int i = 0; i < n; i++){
 		res *= x;
@@ -114,47 +147,117 @@ double pow(double x, int n){
 
 
 
-int _CharId(char c){
-	if(65 <= c and c < 91){
-		c -= 65;
-	}else
-	if(97 <= c and c < 123){
-		c -= 97;
-	}else
-	if(c == ' ' or c == '\t'){
-		c = 26;
-	}else
-	if(c == '-'){
-		c = 27;
-	}else
-	if(c == '\''){
-		c = 28;
-	}else
-	if(c == '.'){
-		c = 29;
-	}
-	else{
-		std::cerr << "WRONG CHAR! : " << (int)c << " " << c << "\n";
-	}
-	return c;
-}
+// int _CharId(char c){
+// 	if(65 <= c and c < 91){
+// 		c -= 65;
+// 	}else
+// 	if(97 <= c and c < 123){
+// 		c -= 97;
+// 	}else
+// 	if(c == ' ' or c == '\t'){
+// 		c = 26;
+// 	}else
+// 	if(c == '-'){
+// 		c = 27;
+// 	}else
+// 	if(c == '\''){
+// 		c = 28;
+// 	}else
+// 	if(c == '.'){
+// 		c = 29;
+// 	}
+// 	else{
+// 		std::cerr << "WRONG CHAR! : " << (int)c << " " << c << "\n";
+// 	}
+// 	return c;
+// }
 
 
 double GetDouble(std::string str){
 	int i = -1;
+	int fraction_part_len = 0;
+	bool fraction_exist = false;
 	double x = 0.;
+	int exp = 0;
+	bool exp_taking = false;
+	bool exp_minus = true;
 	while(str[++i]){
-		x = (str[i] - 48) + x*10.;
+		if(exp_taking){
+			exp = (str[i] - 48) + exp*10;
+		}else{
+			if(str[i] == '.'){
+				fraction_exist = true;
+				continue;
+			}else
+			if(str[i] == 'e'){
+				if(str[i+1] == '-'){
+					exp_minus = true;
+				}else
+				if(str[i+1] == '+'){
+					exp_minus = false;
+				}else{
+					std::cerr << "\t### WRONG SIGN WHEN READING DOUBLE [from GetDouble(string) in tools.cpp] ###" << std::endl;
+				}
+				exp_taking = true;
+				i++;
+			}else{
+				x = (str[i] - 48) + x*10;
+				if(fraction_exist){
+					fraction_part_len++;
+				}
+			}
+		}
 	}
+	if(exp_minus){
+		x = x * mpow(0.1, exp + fraction_part_len);
+	}else{
+		x = x * mpow(10, exp) * mpow(0.1, fraction_part_len);
+	}
+	
 	return x;
 }
 
 double GetDouble(char *str){
 	int i = -1;
+	int fraction_part_len = 0;
+	bool fraction_exist = false;
 	double x = 0.;
+	int exp = 0;
+	bool exp_taking = false;
+	bool exp_minus = true;
 	while(str[++i]){
-		x = (str[i] - 48) + x*10.;
+		if(exp_taking){
+			exp = (str[i] - 48) + exp*10;
+		}else{
+			if(str[i] == '.'){
+				fraction_exist = true;
+				continue;
+			}else
+			if(str[i] == 'e'){
+				if(str[i+1] == '-'){
+					exp_minus = true;
+				}else
+				if(str[i+1] == '+'){
+					exp_minus = false;
+				}else{
+					std::cerr << "\t### WRONG SIGN WHEN READING DOUBLE [from GetDouble(char*) in tools.cpp] ###" << std::endl;
+				}
+				exp_taking = true;
+				i++;
+			}else{
+				x = (str[i] - 48) + x*10;
+				if(fraction_exist){
+					fraction_part_len++;
+				}
+			}
+		}
 	}
+	if(exp_minus){
+		x = x * mpow(0.1, exp + fraction_part_len);
+	}else{
+		x = x * mpow(10, exp) * mpow(0.1, fraction_part_len);
+	}
+	
 	return x;
 }
 
@@ -207,12 +310,12 @@ void __printMatrices(int *matrix, int n, int m){
 
 
 void readMatrices(int *matrices[]){
-	char sdel[] = "_del_counts.txt";   	// количество раз, когда x было ошибочно написано как xy
-	char sadd[] = "_add_counts.txt";   	// -||-  ху было ошибочно написано как х
-	char ssub[] = "_subst_counts.txt"; 	// -||-  у было написано как х
-	char srev[] = "_rev_counts.txt";   	// -||-  ху было написано как ух
-	char chrs[] = "_chars.txt";			// -||-  xy встречается в тестовом корпусе
-	char  chr[] = "_char.txt";			// -||-  x встречается в тестовом корпусе
+	char sdel[] = "x_workdicts/_del_counts.txt";   	// количество раз, когда x было ошибочно написано как xy
+	char sadd[] = "x_workdicts/_add_counts.txt";   	// -||-  ху было ошибочно написано как х
+	char ssub[] = "x_workdicts/_subst_counts.txt"; 	// -||-  у было написано как х
+	char srev[] = "x_workdicts/_rev_counts.txt";   	// -||-  ху было написано как ух
+	char chrs[] = "x_workdicts/_chars.txt";			// -||-  xy встречается в тестовом корпусе
+	char  chr[] = "x_workdicts/_char.txt";			// -||-  x встречается в тестовом корпусе
 	
 	std::string line;
 	int row;
