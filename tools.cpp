@@ -145,34 +145,6 @@ double mpow(double x, int n){
 	return res;
 }
 
-
-
-// int _CharId(char c){
-// 	if(65 <= c and c < 91){
-// 		c -= 65;
-// 	}else
-// 	if(97 <= c and c < 123){
-// 		c -= 97;
-// 	}else
-// 	if(c == ' ' or c == '\t'){
-// 		c = 26;
-// 	}else
-// 	if(c == '-'){
-// 		c = 27;
-// 	}else
-// 	if(c == '\''){
-// 		c = 28;
-// 	}else
-// 	if(c == '.'){
-// 		c = 29;
-// 	}
-// 	else{
-// 		std::cerr << "WRONG CHAR! : " << (int)c << " " << c << "\n";
-// 	}
-// 	return c;
-// }
-
-
 double GetDouble(std::string str){
 	int i = -1;
 	int fraction_part_len = 0;

@@ -9,9 +9,23 @@
 #include <cmath>
 #include "tools.h"
 
-#define _TEST_ true
+#define _TEST_ false
 
-#define ADDITINALCHARS 3 	// 3x : \space, \<s> = start string, \</s> = end string
+	#if _TEST_
+#define __KNOWED_WS_FPATH__ "x_workdicts/know_ws.txt"
+#define __LANG_MODEL_FPATH__ "x_workdicts/kn_model.txt"
+#define __DOMAIN_Z_FPATH__ "x_workdicts/domain_z.txt"
+	#else
+#define __KNOWED_WS_FPATH__ "x_workdicts/know_ws.txt"
+#define __LANG_MODEL_FPATH__ "x_workdicts/kn_model.txt"
+#define __DOMAIN_Z_FPATH__ "x_workdicts/domain_z.txt"
+// #define __KNOWED_WS_FPATH__ "../x_workdicts/know_ws.txt"
+// #define __LANG_MODEL_FPATH__ "../x_workdicts/kn_model.txt"
+// #define __DOMAIN_Z_FPATH__ "../x_workdicts/domain_z.txt"
+	#endif
+
+
+#define ADDITINALCHARS 3 	// 3x : \space, \<s> = # = start string, \</s> = $ = end string
 #define ALPHABET 26  		// |Alphabet| 
 #define ALPHABETALL ALPHABET + ADDITINALCHARS
 #define MAXPATLEN 100
@@ -24,27 +38,7 @@
 #define ALPHA_MODEL 0.30 // это ещё надо подкручивать. но это - вероятность того, что слово не было написано с ошибкой
 			// т.е. 30 процентов что слово словарное на самом деле ошибка и соотв. 70 то что правда.
 
-#define KEK_CONST 1   // т.к. у меня нету вероятностей для ошибочности написать какое-то однобуквенное слово 
-					  //    вместо другого такого же, я буду использовать эту взятую с потолка, константу, для этого.
-					  //	да, тупо. Но чего уж поделать) Дело ещё и в том, что после мы и так сможем взять вероятность
-					  //	одно-грамм (кек), так что тут нужно какое-то нейтральное число, пусть будет это.
-
-// минимальные частотности из словарей - их делишь потом на сумму по моделям.
-#define DEF_UNI 12712
-#define DEF_BI 23
-#define DEF_TRI 25
-
-// #define FAILEDSEARCH -2.0
-// #define MAXINT 2147483647
-// #define TYPOSDEPTH 10  // typos generation depth
-// #define RELIABLELEN 6 // shifted by start index of cicle = 1
-// #define EPS 0.00000000001
-// #define REALWORDPROB = 0.8
-// #define INFINITY = 1. / 0.
-// #define NAN = 0. / 0.
-
 extern double FAILEDSEARCH;
-extern double uniSum, biSum, triSum;
 
 using namespace std;
 
@@ -97,24 +91,6 @@ public:
 
 	void Delete();
 	
-/* 	 " "  = 26 // space and tab
- */
-	
-	// int _CharId(char c){
-	// 	if(65 <= c and c < 91){
-	// 		c -= 65;
-	// 	}else
-	// 	if(97 <= c and c < 123){
-	// 		c -= 97;
-	// 	}else
-	// 	if(c == 32 or c == '\t'){
-	// 		c = 26;
-	// 	}else{
-	// 		cerr << "WRONG CHAR! : " << (int)c << " " << c << "\n";
-	// 	}
-	// 	return c;
-	// };
-	
 private:
 
 	//Recursive functions - include and create branch:
@@ -150,6 +126,5 @@ TTypoTrie* Traverse(TTypoTrie *startNode, char *pattern, int lvl = 1);
 TTypoTrie* __SimilarGenerate_4_ONE_CHR(char *pattern, int typosLvl, TTypoTrie *db, double prevProb = 1., double coeff = 1.);
 TTypoTrie* __SimilarGenerate(char *pattern, int typosLvl, TTypoTrie *db, double prevProb = 1., double coeff = 1.);
 list<TWordNProb*>* __SimilarTo(char *pattern, list<TWordNProb*> *similarList, TTypoTrie *typos, TTypoTrie *dict, int diff = 1);
-//list<TWordNProb*>* __SimilarTo(string &pattern, list<TWordNProb*> *similarList, TTypoTrie *typos, TTypoTrie *dict, int diff = 1);
 
 #endif //__TYPOS_H__

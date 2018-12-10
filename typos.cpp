@@ -1,9 +1,7 @@
 #include "typos.h"
 
-//double FAILEDSEARCH = -2.0;
 double FAILEDSEARCH = 0.;
 TTypoTrie *knowed_ws;
-// double uniSum, biSum, triSum;
 double def_prob;
 
 // confusion matrices:
@@ -46,7 +44,7 @@ inline double ChannelProb(int confCount, int chCount, double coeff, double prevP
 
 	#if _TEST_
 		if(prevProb == 1){
-			cout << "wat?" << endl;
+			cerr << "wat?" << endl;
 		}
 	#endif
 
@@ -91,11 +89,6 @@ TTypoTrie::TTypoTrie(char ch, TTypoTrie *p){
 
 	
 bool TTypoTrie::Include(string &str, double probOfWord, int genTypos, double probOfWord_cont, double y_const){
-	// if(probOfWord == 0.){
-	// 	//cout << "wtf bro!?" << endl;
-	// 	t++;
-	// }
-	// t_all++;
 	if(child[_CharId(str[0])]){
 		return child[_CharId(str[0])]->_IncludeRecursive(0, str, probOfWord, genTypos, probOfWord_cont, y_const);
 	}else{
@@ -106,11 +99,6 @@ bool TTypoTrie::Include(string &str, double probOfWord, int genTypos, double pro
 
 
 bool TTypoTrie::Include(char *str, double probOfWord, int genTypos, double probOfWord_cont, double y_const){
-	// if(probOfWord == 0.){
-	// 	//cout << "wtf bro!?" << endl;
-	// 	t++;
-	// }
-	// t_all++;
 	if(child[_CharId(str[0])]){
 		return child[_CharId(str[0])]->_IncludeRecursive(0, str, probOfWord, genTypos, probOfWord_cont, y_const);
 	}else{
@@ -211,23 +199,6 @@ double TTypoTrie::Search(deque<char*> &dstr, int start, int end, int what_consta
 	int i, j, n;//, wlen;
 	double answer = FAILEDSEARCH;
 	TTypoTrie *node = this;
-	//wlen = 
-	//считаем длину дека-слова=предложения   
-	//     !!! ПРОВЕРЬ ТУТ ВСЕ ОБРАЩЕНИЯ К МЕТОДАМ БЛЕАТЬ!!22121!!!! х))
-/*	wlen = -1; // чтобы нивелировать последний лишний плюс к длине за пробелы, что в первом (внешнем) цикле
-	for(i = 0; i < dstr.size; i++){
-		for(j = 0; j < dstr[i].len; j++){
-			wlen++;
-		}
-		wlen++
-	}
-	
-	for(i = 0; i < wlen - 1; i++){
-		node = node->child[_CharId(str[i])];
-		if(node == NULL){
-			break;
-		}
-	}*/
 
 	if(end == -1){
 		end = dstr.size();
@@ -243,7 +214,6 @@ double TTypoTrie::Search(deque<char*> &dstr, int start, int end, int what_consta
 		if(node == NULL){
 			break;
 		}
-		//node = node->child[_CharId(' ')];
 		node = node->child[26]; // это символ пробела в дереве совпадает по смыслу с верхней строкой
 		if(node == NULL){
 			break;
@@ -384,26 +354,19 @@ bool TTypoTrie::_LoadRecursive(ifstream &input){
 }
 
 bool TTypoTrie::Load(char *fname){
-	ifstream fKnowedWs("x_workdicts/know_ws.txt");
+	ifstream fKnowedWs(__KNOWED_WS_FPATH__);
 	ifstream input(fname, ios::binary);
 	
 	if(!fKnowedWs.is_open() || !input.is_open()){
 		return false;
 	}
 	
-	// input.read(reinterpret_cast<char*>(&uniSum), sizeof uniSum);
-	// input.read(reinterpret_cast<char*>(&biSum), sizeof biSum);
-	// input.read(reinterpret_cast<char*>(&triSum), sizeof triSum);
 	input.read(reinterpret_cast<char*>(&def_prob), sizeof def_prob);
 	if(_LoadRecursive(input)){
 		input.close();
 
 		int *matrices[] = {&mDel[0][0], &mAdd[0][0], &mSub[0][0], &mRev[0][0], &chrs[0][0], &chr[0]};
-		// int tt[][2] = {{27, 26},{27,26},{26,26},{26,26},{27,26},{27,1}};
 		readMatrices(matrices);
-		// for(int i = 0; i < 6; i++){
-		// 	__printMatrices(matrices[i], tt[i][0], tt[i][1]);
-		// }
 		string line;
 		knowed_ws = new TTypoTrie();
 		while(getline(fKnowedWs, line)){
@@ -459,10 +422,7 @@ bool TTypoTrie::Save(char *fname){
 		cerr << "Can't open a dict file\n";
 		return false;
 	}
-	
-	// outFile.write(reinterpret_cast<const char*>(&uniSum), sizeof uniSum);
-	// outFile.write(reinterpret_cast<const char*>(&biSum), sizeof biSum);
-	// outFile.write(reinterpret_cast<const char*>(&triSum), sizeof triSum);
+
 	outFile.write(reinterpret_cast<char*>(&def_prob), sizeof def_prob);
 	if(_SaveRecursive(outFile)){
 		outFile.close();
@@ -472,7 +432,7 @@ bool TTypoTrie::Save(char *fname){
 		return true;
 	}else{
 		#if _TEST_ 
-			cout << " WTF!?" << endl;
+			cerr << " CAN'T SAVE FILE! WTF!?" << endl;
 		#endif
 		outFile.close();
 		return false;
@@ -487,7 +447,6 @@ bool TTypoTrie::_IncludeRecursive(int pos, char *str, double probOfWord, int gen
 	if(pos == strLen(str) - 1){
 		if(prob){
 			if(genTypos < 0){
-				// cerr << "DUPLICATE1: " << str << " " << str[pos] << " " << pos << "\n";
 				return false;
 			}else{
 				if(prob < probOfWord){
@@ -500,7 +459,7 @@ bool TTypoTrie::_IncludeRecursive(int pos, char *str, double probOfWord, int gen
 		}else{
 			typoDepth = genTypos;
 			if(probOfWord >= 0.){
-				prob = probOfWord; // dirty trick... be careful
+				prob = probOfWord; 
 				prob_cont = probOfWord_cont;
 				y = y_const;
 			}else{
@@ -529,7 +488,7 @@ TTypoTrie* TTypoTrie::_CreateBranch(int pos, char* str, double probOfWord, int g
 		root->typoDepth = genTypos;
 		root->parent = this;
 		if(probOfWord >= 0.){
-			root->prob = probOfWord; // dirty trick... be careful
+			root->prob = probOfWord; 
 			root->prob_cont = probOfWord_cont;
 			root->y = y_const;
 		}else{
@@ -552,7 +511,6 @@ bool TTypoTrie::_IncludeRecursive(int pos, string &str, double probOfWord, int g
 	if(pos == str.size() - 1){
 		if(prob){
 			if(genTypos < 0){
-				// cerr << "DUPLICATE2: " << str << " " << str[pos] << " " << pos << "\n";
 				return false;
 			}else{
 				if(prob < probOfWord){
@@ -565,7 +523,7 @@ bool TTypoTrie::_IncludeRecursive(int pos, string &str, double probOfWord, int g
 		}else{
 			typoDepth = genTypos;
 			if(probOfWord >= 0.){
-				prob = probOfWord; // dirty trick... be careful
+				prob = probOfWord; 
 				prob_cont = probOfWord_cont;
 				y = y_const;
 			}else{
@@ -623,29 +581,24 @@ void TTypoTrie::_DeleteRecursive(){
 }
 void TTypoTrie::Delete(){
 	_DeleteRecursive();
-	delete this;
 }
 
 
 bool TTypoTrie::DataConstructor(){
-	// char dictName[] = "fdict_bin";
-	ifstream fsource("x_workdicts/kn_model.txt");
-	ifstream fKnowedWs("x_workdicts/know_ws.txt");
+	ifstream fsource(__LANG_MODEL_FPATH__);
+	ifstream fKnowedWs(__KNOWED_WS_FPATH__);
 	 
 	if(!fKnowedWs.is_open() || !fsource.is_open()){
 		cerr << "Error Bro: can't open some files, help me, pls\n";
 		return false;
 	}
 
-	// extract все миллион слов что есть в модели
 	def_prob = 100000.;
 	double prob1, prob2, y;
 	int delim, i;
 	string str, line;
-	// ifstream fsource(argv[1]);
 	fsource.clear();
 	std::istringstream iss("");
-	// knowed_ws = new TTypoTrie();
 	knowed_ws = new TTypoTrie();
 	while(getline(fKnowedWs, line)){
 		knowed_ws->Include(line);
@@ -655,18 +608,6 @@ bool TTypoTrie::DataConstructor(){
 		if(!getline(fsource, str, '\t')){
 			break;
 		}
-		// delim = str.find("<s>");
-		// while(delim != string::npos){
-		// 	// cout << ".!. " << endl;
-		// 	str.replace(delim, 3, "#");
-		// 	delim = str.find("<s>");
-		// }
-		// delim = str.find("</s>");
-		// while(delim != string::npos){
-		// 	// cout << ".!.  " << endl;
-		// 	str.replace(delim, 4, "$");
-		// 	delim = str.find("</s>");
-		// }
 		if(!getline(fsource, line)){
 			break;
 		}
@@ -694,15 +635,7 @@ bool TTypoTrie::DataConstructor(){
 	
 	fsource.close();
 
-	// read confusion matrices
-	// 	int mDel[27][26];
-	// 	int mAdd[27][26];
-	// 	int mSub[26][26];
-	// 	int mRev[26][26];
-	// 	int chrs[27][26];
-	// 	int  chr[26];
 	int *matrices[] = {&mDel[0][0], &mAdd[0][0], &mSub[0][0], &mRev[0][0], &chrs[0][0], &chr[0]};
-	// int tt[][2] = {{27, 26},{27,26},{26,26},{26,26},{27,26},{27,1}};
 	readMatrices(matrices);
 
 	#if _TEST_ 	
@@ -716,10 +649,8 @@ bool TTypoTrie::DataConstructor(){
 	// Construct top of variants:
 
 inline double ProbMoreThan(double errChanelProb, int typoDist, double freq, double pairExists_prob, double exists_coef){
-	// freq = errChanelProb * freq;
 	freq = errChanelProb * exists_coef; // ПОТОМУ ЧТО ТЕПЕРЬ ТЫ УМНОЖАЕШЬ НА LANG-MODEL Кнессера-Нея в spell.cpp
-							//  ТАК ЧТО ТУТ ТОЛЬКО Channel probability 
-	// if(mabs(pairExists_prob) >= freq){
+										//  ТАК ЧТО ТУТ ТОЛЬКО Channel probability (ну и на модификатор существования)
 	if(pairExists_prob >= freq){
 		freq = 0.;
 	}
@@ -768,14 +699,7 @@ void _TopExistsRecursive(TTypoTrie *rootTypos, int depth, char *str, list<TWordN
 
 		if(frequency > 0.){
 			CheckTopOf(res, str, rootTypos->prob, rootTypos->typoDepth, frequency);
-		}else		
-		// if(frequency > 0.){
-		// 	CheckTopOf(res, str, rootTypos->prob, rootTypos->typoDepth, frequency);
-		// }else
-		// if(rootTypos->typoDepth == PARTITION_CODE){
-		// 	frequency = pow(REDUCE_BASE, REDUCE_COEF);
-		// 	CheckTopOf(res, str, rootTypos->prob, rootTypos->typoDepth, frequency);
-		// }
+		}
 
 		rootTypos->prob = 0.;
 	}
@@ -881,10 +805,6 @@ TTypoTrie* Traverse(TTypoTrie *startNode, char *pattern, int lvl){
 	// 		РАССМАТРИВАЙ pattern, КАК СЛОВО НАПИСАННОЕ ЗАВЕДОМО С ОШИБКОЙ. 
 	// 		ТУТ МЫ ГЕНЕРИРУЕМ ВСЕ ВОЗМОЖНЫЕ ВЕРНЫЕ ИСХОДНЫЕ ВАРИАНТЫ СЛОВА.
 
-// не обошлось и без быдло кода. УВЫ, обычный симиляр генерейт - чудо творение моего мозга - сейчас его не перепилить 
-//    ещё и под корректную работу с одним символом.... 
-//    просто сделаем отдельно обработку его: deletions и subst
-
 TTypoTrie* __SimilarGenerate_4_ONE_CHR(char *pattern, int typosLvl, TTypoTrie *db, double prevProb, double coeff){
 	char str1[3], str2[3]; // третий под терминальный символ
 	str1[1] = pattern[0]; // на самом деле символ один, но преобразование то сделать надо из строки в один чарик
@@ -916,16 +836,7 @@ TTypoTrie* __SimilarGenerate_4_ONE_CHR(char *pattern, int typosLvl, TTypoTrie *d
 	return db;
 }
 
-// IF WORD be length 1 its so bad.
 TTypoTrie* __SimilarGenerate(char *pattern, int typosLvl, TTypoTrie *db, double prevProb, double coeff){
-	// int *matrices[] = {&mDel[0][0], &mAdd[0][0], &mSub[0][0], &mRev[0][0], &chrs[0][0], &chr[0]};
-	// int tt[][2] = {{27, 26},{27,26},{26,26},{26,26},{27,26},{27,1}};
-	// readMatrices(matrices);
-	// for(int i = 0; i < 6; i++){
-	// 	__printMatrices(matrices[i], tt[i][0], tt[i][1]);
-	// }
-
-
 	int i, pos, k, plen = strLen(pattern), id1, id2;
 	char *str = new char[plen + 2];
 	char *spStr[(plen - 1) * 2]; // splitted string without delimiter char: Cnk*2 - 2 = N!/(N-K)!*K!
@@ -966,7 +877,6 @@ TTypoTrie* __SimilarGenerate(char *pattern, int typosLvl, TTypoTrie *db, double 
 		
 		for(i = 1; i < plen - 1; i++){
 			spStr[++pos] = strCpyCreate(pattern, 0, i);
-			// spStr[++pos] = strCpyCreate(pattern, i + 1, plen - strLen(spStr[pos - 1]) - 1);
 			spStr[++pos] = strCpyCreate(pattern, i + 1);
 			
 			str = strCpyFrom(spStr[pos - 1], str);
@@ -992,13 +902,11 @@ TTypoTrie* __SimilarGenerate(char *pattern, int typosLvl, TTypoTrie *db, double 
 		str[1] = 0;
 		str = strCpyBackFrom(spStr[0], str);
 		id1 = _CharId(pattern[0]);
-		prob = ChannelProb(mSub[0][id2], chr[id2], coeff, prevProb); // хз почему, но было использовано id2, вместо логично id1
-		//prob = ChannelProb(mSub[0][id1], chr[id1], coeff, prevProb);
+		prob = ChannelProb(mSub[0][id2], chr[id2], coeff, prevProb); 
 		db->Include(str, prob, typosLvl);
 		for(i = 1; i < ALPHABET; i++){
 			str[0] = (char)(97 + i);
-			prob = ChannelProb(mSub[i][id2], chr[id2], coeff, prevProb); // тоже самое
-			//prob = ChannelProb(mSub[i][id1], chr[id1], coeff, prevProb);
+			prob = ChannelProb(mSub[i][id2], chr[id2], coeff, prevProb);
 			db->Include(str, prob, typosLvl);
 		}
 
@@ -1119,10 +1027,6 @@ TTypoTrie* __SimilarGenerate(char *pattern, int typosLvl, TTypoTrie *db, double 
 	for(i = 0; i < plen * 2 - 2; i++){
 		delete[] spStr[i];
 	}
-	// logfile.open("wtf.txt");
-	// db->xPrint(logfile);
-	// logfile.close();
-
 
 	return db;	//	RETURN db ITSELF, JUST TO NOTE THAT CHANGES WAS MADE
 }
@@ -1130,20 +1034,11 @@ TTypoTrie* __SimilarGenerate(char *pattern, int typosLvl, TTypoTrie *db, double 
 
 
 list<TWordNProb*>* __SimilarTo(char* pattern, list<TWordNProb*> *similarList, TTypoTrie *typos, TTypoTrie *dict, int diff){
-//	list<TWordNProb*> similarList; - вывел это во внешнюю, вызывающюю часть
-
-	// int *matrices[] = {&mDel[0][0], &mAdd[0][0], &mSub[0][0], &mRev[0][0], &chrs[0][0], &chr[0]};
-	// int tt[][2] = {{27, 26},{27,26},{26,26},{26,26},{27,26},{27,1}};
-	// readMatrices(matrices);
-	// for(int i = 0; i < 6; i++){
-	// 	__printMatrices(matrices[i], tt[i][0], tt[i][1]);
-	// }
 
 	int plen = strLen(pattern);
 	if(plen == 0){
 		return similarList;
 	}
-	// cout << "k = 1... ";	
 	TTypoTrie *node;
 
 	t_all = 0;
@@ -1157,26 +1052,17 @@ list<TWordNProb*>* __SimilarTo(char* pattern, list<TWordNProb*> *similarList, TT
 	else{
 		typos = __SimilarGenerate(pattern, 1, typos);
 
-		// cout << "completed\n";
-		// char s[] = "one";
-		// cout << typos->Search(s) << endl;
-		// logfile.open("wtf.txt");
-		// typos->xPrint(logfile);
-		// logfile.close();
-
 		node = typos;
 		
 		if(diff > 1 && strLen(pattern) <= 18){
 			char typoPat[MAXPATLEN];
 			
 			for(int j = 2; j < diff + 1; j++){
-				// cout << "k = " << j << "... ";
 				while((node = Traverse(node, typoPat, j))){
 					if(typoPat[1] != 0){ // == /0 (т.е. концу строки)
 						typos = __SimilarGenerate(typoPat, j, typos, node->prob, REDUCE_BASE);
 					}
 				}
-				// cout << "completed\n";
 			}
 		}
 		
@@ -1212,10 +1098,6 @@ list<TWordNProb*>* __SimilarTo(char* pattern, list<TWordNProb*> *similarList, TT
 		node->prob = 0.; //
 	}
 
-	// logfile.open("wtf.txt");
-	// typos->xPrint(logfile);
-	// logfile.close();
-
 	similarList = GetTopExistances(typos, dict, similarList);
 
 	list<TWordNProb*>::iterator it_str = similarList->begin();
@@ -1223,8 +1105,6 @@ list<TWordNProb*>* __SimilarTo(char* pattern, list<TWordNProb*> *similarList, TT
 
 	word_freq = dict->Search(pattern);
 	if(word_freq != FAILEDSEARCH){
-		// word_freq = (DEF_UNI / uniSum) * pow(REDUCE_BASE, REDUCE_COEF);
-		// word_freq = def_prob;
 
 		for(; it_str != similarList->end(); it_str++){
 			temp = ProbMoreThan(word_freq, 0, word_freq, (*it_str)->prob, 1 - ALPHA_MODEL);
@@ -1326,242 +1206,3 @@ list<TWordNProb*>* __SimilarTo(char* pattern, list<TWordNProb*> *similarList, TT
 	
 	return similarList;
 }
-
-
-
-
-
-
-// inline double ProbMoreThan(double errChanelProb, int typoDist, double freq, double pairExists_prob){
-// 	freq = errChanelProb * freq;
-// 	if(mabs(pairExists_prob) >= freq){
-// 		freq = 0.;
-// 	}
-
-// 	return freq;
-// }
-
-
-// это старый вариант, когда на вход подаётся string, но мы уже с ними не работаем, теперь только char[]
-
-/*list<TWordNProb*>* __SimilarTo(string pattern, list<TWordNProb*> *similarList, TTypoTrie *typos, TTypoTrie *dict, int diff){
-//	list<TWordNProb*> similarList; - вывел это во внешнюю, вызывающюю часть
-	
-	if(pattern.size() == 0){
-		return similarList;
-	}
-	// cout << "k = 1... ";	
-	char *ss = strCpyCreate(pattern.c_str());
-	TTypoTrie *node;
-	if(pattern.size() == 1){
-		typos = __SimilarGenerate_4_ONE_CHR(ss, 1, typos);
-
-		node = typos;
-	}
-	else{
-		typos = __SimilarGenerate(ss, 1, typos);
-
-		// cout << "completed\n";
-		node = typos;
-		
-		if(diff > 1){
-			char typoPat[MAXPATLEN];
-			
-			for(int j = 2; j < diff + 1; j++){
-				// cout << "k = " << j << "... ";
-				while((node = Traverse(node, typoPat, j))){
-					typos = __SimilarGenerate(typoPat, j, typos, node->prob, REDUCE_BASE);
-				}
-				// cout << "completed\n";
-			}
-		}
-		
-		// Generate patritions:
-		{
-			if(pattern.size() > 1){
-				int i, plen = pattern.size();
-				double prob1 = 0., prob2 = 0.;
-				char *str = new char[plen + 2];
-				for( i = 1; i < plen - 1; i++){
-					str = strCpyFrom(ss, str, 0, i);
-					str[i] = 0;
-					prob1 = dict->Search(str);
-					if(prob1 != FAILEDSEARCH){
-						str[i] = ' ';
-						str[i + 1] = 0;
-						str = strCpyBackFrom(ss, str, i);
-
-						prob2 = dict->Search(str + i + 1);
-						if(prob2 != FAILEDSEARCH){
-							prob1 *= prob2;
-							typos->Include(str, prob1, PARTITION_CODE);
-						}
-					}
-				}
-				delete[] str;
-			}
-		}
-	}
-	//   ВАЖНЕНЬКО!
-	// тут встроим вероятность того что ошибки в слове изначальном не было. 
-	//    напомню - что потом node->prob (онж Channel Prob) будет умножаться на частоту самого варианта.
-	node = typos->SearchNode(pattern);
-	if(node == NULL){
-		typos->Include(pattern, ALPHA_MODEL, 1);
-	}
-	else{
-		node->prob = ALPHA_MODEL;
-	}
-	
-	similarList = GetTopExistances(pattern, typos, dict, similarList);
-	delete[] ss;
-	
-	return similarList;
-}*/
-
-
-/*bool TTypoTrie::DataConstructor(){
-	// char dictName[] = "fdict_bin";
-	
-	ifstream fKnowedWs("x_workdicts/know_ws.txt");
-	ifstream fUnigrams1("x_workdicts/good_counts.txt"); //  отсеил из старых wcounts.txt те, которых нет в wcounts2 - были просто совсем мисспеловские варианты
-	ifstream fUnigrams2("x_workdicts/wcounts2.txt");	// понизил планку с 95к до 38к примерно с этого параметра всякая дичь идёт в wcounts.txt
-	ifstream fBigrams("x_workdicts/w2_.txt");
-	ifstream fTrigrams("x_workdicts/w3_.txt");
-	 
-	if(!fKnowedWs.is_open() || !fUnigrams1.is_open() || !fUnigrams2.is_open() || !fBigrams.is_open() || !fTrigrams.is_open()){
-		cerr << "Error Bro: can't open some files, help me, pls\n";
-		return false;
-	}
-	
-	string line, str;
-
-	double intpart, fractpart; //TEST!
-
-	//extract knowed words... we delete unknowed words use this!
-	TTypoTrie *knowed = new TTypoTrie();
-	int _c = 0;
-	while(getline(fKnowedWs, line)){
-		knowed->Include(line);
-		_c++;
-	}
-
-	int nxtDelim, delim;
-	//double uniSum, biSum, triSum, num;
-	double num;
-	uniSum = biSum = triSum = 0.;
-
-	// extract unigram words and counts:
-	while(getline(fUnigrams1, line)){
-		delim = line.find(9);
-		str = line.substr(0,delim);
-
-		num = GetDouble(line.substr(delim + 1, line.length() - str.length() - 1));
-
-		if(knowed->Search(str) == FAILEDSEARCH){
-			num *= pow(REDUCE_BASE);
-		}
-
-		uniSum += num;
-
-		Include(str, num, -1);
-	}
-	
-
-	while(getline(fUnigrams2, line)){
-		delim = line.find(9);
-		str = line.substr(0,delim);
-
-		num = GetDouble(line.substr(delim + 1, line.length() - str.length() - 1));
-
-		// when str including we returning answer 
-		// in Include method - if this word exists then 
-		// we don't add its count
-		if(Include(str, num, -1)){
-			uniSum += num;
-		}
-	}
-	
-	// ofstream ff("info.txt");
-	// xPrint(ff);
-	// ff.close();
-
-	//extract bigrams:
-	while(getline(fBigrams, line)){
-		delim = line.find('\t');
-		num = GetDouble(line.substr(0, delim));
-		biSum += num;
-		
-		delim++;
-		nxtDelim = line.find('\t', delim);
-		str = line.substr(delim, nxtDelim - delim);
-		
-		nxtDelim++;
-		str += ' ';
-		str += line.substr(nxtDelim);
-		
-		Include(str, num, -2);
-	}
-	
-	//extract trigrams:
-	while(getline(fTrigrams, line)){
-		delim = line.find('\t');
-		num = GetDouble(line.substr(0, delim));
-		triSum += num;
-		
-		delim++;
-		nxtDelim = line.find('\t', delim);
-		str = line.substr(delim, nxtDelim - delim);
-		
-		nxtDelim++;
-		delim = line.find('\t', nxtDelim);
-		str += ' ';
-		str += line.substr(nxtDelim, delim - nxtDelim);
-		
-		delim++;
-		str += ' ';
-		str += line.substr(delim);
-		
-		Include(str, num, -3);
-	}
-	
-	fKnowedWs.close();
-	fUnigrams1.close();
-	fUnigrams2.close();
-	fBigrams.close();
-	fTrigrams.close();
-
-
-	// correct counts
-	char temp_str[MAXPATLEN];
-	double lvl_counts[] = {uniSum, biSum, triSum};
-	cout << "	$umz: " << uniSum << " " << biSum << " " << triSum << endl;
-
-	TTypoTrie *node;
-	for(int i = 0; i < sizeof(lvl_counts) / sizeof(double); i++){
-		node = this;
-		while((node = Traverse(node, temp_str, -(i + 1)))){
-			node->prob /= lvl_counts[i];
-		}
-	}
-	
-	delete knowed;
-
-	// read confusion matrices
-	// 	int mDel[27][26];
-	// 	int mAdd[27][26];
-	// 	int mSub[26][26];
-	// 	int mRev[26][26];
-	// 	int chrs[27][26];
-	// 	int  chr[26];
-	int *matrices[] = {&mDel[0][0], &mAdd[0][0], &mSub[0][0], &mRev[0][0], &chrs[0][0], &chr[0]};
-	int tt[][2] = {{27, 26},{27,26},{26,26},{26,26},{27,26},{27,1}};
-	readMatrices(matrices);
-	// for(int i = 0; i < 6; i++){
-	// 	__printMatrices(matrices[i], tt[i][0], tt[i][1]);
-	// }
-
-	cout << " # dictionary constructed!" << endl;
-
-	return true;
-}*/
